@@ -22,7 +22,7 @@ class Slideshow(Base):
     view_count = Column(Integer, nullable=False)
     embed_count = Column(Integer, nullable=False)
     comment_count = Column(Integer, nullable=False)
-    favorites_count = Column(Integer, nullable=False)
+    likes_count = Column(Integer, nullable=False)  # favories_count in DOM metadata
 
     category_name = Column(String, ForeignKey('category.name'))
     tags = relationship('Tag', secondary='slideshow_tag')
@@ -77,9 +77,37 @@ class SlideshowTag(Base):
     tag_name = Column(String, ForeignKey('tag.name'), primary_key=True)
 
 
-class Follower(Base):
-    __tablename__ = 'follower'
+class Following(Base):
+    __tablename__ = 'following'
     followed_user_login = Column(String, ForeignKey('user.login'), primary_key=True)
     following_user_login = Column(String, ForeignKey('user.login'), primary_key=True)
     followed_user = relationship('User', backref='following_users', primaryjoin=(User.login == followed_user_login))
     following_user = relationship('User', backref='follower', primaryjoin=(User.login == following_user_login))
+
+
+class RelatedSlideshow(Base):
+    __tablename__ = 'related_slideshow'
+    related_slideshow_id = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
+    relating_slideshow_id = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
+    related_slideshow = relationship('Slideshow', backref='relating_slideshow', primaryjoin=(Slideshow.id == related_slideshow_id))
+    relating_slideshow = relationship('Slideshow', backref='related_slideshow', primaryjoin=(Slideshow.id == relating_slideshow_id))
+
+
+class SlideshowLike(Base):
+    __tablename__ = 'slideshow_like'
+    user_login = Column(String, ForeignKey('user.login'), primary_key=True)
+    slideshow_id = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
+    user = relationship('User', backref='liked_slideshows', primaryjoin=(User.login == user_login))
+    slideshow = relationship('Slideshow', backref='liked_by', primaryjoin=(Slideshow.id == slideshow_id))
+
+
+class SlideshowComment(Base):
+    __tablename__ = 'slideshow_comment'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creation_date = Column(DateTime, nullable=False)
+    text = Column(String)
+    user_login = Column(String, ForeignKey('user.login'), nullable=False)
+    slideshow_id = Column(Integer, ForeignKey('slideshow.id'), nullable=False)
+    user = relationship('User', backref='comments', primaryjoin=(User.login == user_login))
+    slideshow = relationship('Slideshow', backref='comments', primaryjoin=(Slideshow.id == slideshow_id))
+
