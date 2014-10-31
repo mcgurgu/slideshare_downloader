@@ -1,11 +1,24 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from model import Format, SlideshowType, Category, Base
-from util import read_config
+from downloader.config import Config
+from downloader.model import Format, SlideshowType, Category, Base
 
 
-def populate_dictionary_tables(session):
+engine = create_engine('sqlite:///' + Config['db.filename'] + '.db')
+
+
+def get_session():
+    DBSession = sessionmaker(bind=engine)
+    return DBSession()
+
+
+def save_all_and_commit(data, session):
+    session.add_all(data)
+    session.commit()
+
+
+def _populate_dictionary_tables(session):
     formats = [Format(code='ppt'),
                Format(code='pdf'),
                Format(code='pps'),
@@ -27,13 +40,10 @@ def populate_dictionary_tables(session):
     default_categories = [Category(name=cat) for cat in default_category_names]
 
     data = formats + slideshowtypes + default_categories
-    session.add_all(data)
-    session.commit()
+    save_all_and_commit(data, session)
 
 
 if __name__ == '__main__':
-    engine = create_engine('sqlite:///' + read_config('db.filename') + '.db')
-    DBSession = sessionmaker(bind=engine)
-    session = DBSession()
+    session = get_session()
     Base.metadata.create_all(engine)
-    populate_dictionary_tables(session)
+    _populate_dictionary_tables(session)

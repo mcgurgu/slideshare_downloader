@@ -1,8 +1,12 @@
+from datetime import datetime
+
 from sqlalchemy import Column, DateTime, String, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
+
 Base = declarative_base()
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S %Z'
 
 
 class Slideshow(Base):
@@ -26,6 +30,12 @@ class Slideshow(Base):
 
     category_name = Column(String, ForeignKey('category.name'))
     tags = relationship('Tag', secondary='slideshow_tag')
+
+    def __setattr__(self, key, value):
+        if key in ['created_date', 'updated_date']:
+            super(Slideshow, self).__setattr__(key, datetime.strptime(value, DATETIME_FORMAT))
+        else:
+            super(Slideshow, self).__setattr__(key, value)
 
 
 class Language(Base):
@@ -87,10 +97,10 @@ class Following(Base):
 
 class RelatedSlideshow(Base):
     __tablename__ = 'related_slideshow'
-    related_slideshow_id = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
-    relating_slideshow_id = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
-    related_slideshow = relationship('Slideshow', backref='relating_slideshow', primaryjoin=(Slideshow.id == related_slideshow_id))
-    relating_slideshow = relationship('Slideshow', backref='related_slideshow', primaryjoin=(Slideshow.id == relating_slideshow_id))
+    related_ssid = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
+    relating_ssid = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
+    related_ss = relationship('Slideshow', backref='relating_ss', primaryjoin=(Slideshow.id == related_ssid))
+    relating_ss = relationship('Slideshow', backref='related_ss', primaryjoin=(Slideshow.id == relating_ssid))
 
 
 class SlideshowLike(Base):
