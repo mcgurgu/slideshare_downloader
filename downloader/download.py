@@ -25,7 +25,7 @@ def scrap_related(d, relating_ssid):
 
 
 def scrap_and_save_slideshow(ssid, session):
-    print "scraping slideshow with ID: %s" % ssid
+    print "downloading slideshow with ID: %s" % ssid
     ss_as_dict = api.get_slideshow_by_id(ssid)
     ss = dict_to_slideshow(ss_as_dict)
     d = pq(url=ss.url)

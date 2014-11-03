@@ -4,9 +4,8 @@ from hashlib import sha1
 import sys
 import urllib2
 
-import xmltodict
-
 from config import Config
+from downloader.xml2dict import fromstring
 
 
 class Pyslideshare:
@@ -26,7 +25,7 @@ class Pyslideshare:
         self.secret_key = Config['secret_key']
         self.verbose = Config['verbose']
 
-    def prepare_url_params(self, **args):
+    def _prepare_url_params(self, **args):
         ts = int(time.time())
         params_dict = {
             'api_key': self.api_key,
@@ -45,7 +44,7 @@ class Pyslideshare:
         return urllib.urlencode(params_dict)
 
     @staticmethod
-    def check_error(json):
+    def _check_error(json):
         if json and hasattr(json, 'SlideShareServiceError'):
             print >> sys.stderr, 'Slideshare returned the following error - %s' % json.SlideShareServiceError.Message
             return None
@@ -56,10 +55,10 @@ class Pyslideshare:
         Handy method which prepares slideshare parameters accepting extra parameters,
         makes service call and returns JSON output
         """
-        params = self.prepare_url_params(**args)
+        params = self._prepare_url_params(**args)
         data = urllib2.urlopen(Pyslideshare._service_url_dict[action], params).read()
-        as_dict = xmltodict.parse(data)
-        return self.check_error(as_dict)
+        as_dict = fromstring(data)
+        return self._check_error(as_dict)
 
     def get_slideshow_by_id(self, slideshow_id):
         return self._make_call('get_slideshow', slideshow_id=str(slideshow_id), detailed=1)['Slideshow']
