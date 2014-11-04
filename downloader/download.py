@@ -1,10 +1,11 @@
 import sys
+import itertools
 
 from pyquery import PyQuery as pq
 
 from config import Config
 from downloader.converted import dict_to_slideshow
-from downloader.model import RelatedSlideshow
+from downloader.model import RelatedSlideshow, User, Following
 from downloader.persistence import save_all_and_commit, get_session
 from slideshare_api import Pyslideshare
 
@@ -23,19 +24,36 @@ def scrap_related(d, relating_ssid):
         related_ssid=ssid,
         relating_ssid=relating_ssid) for ssid in related_ids]
 
+def make_user(htmlElement):
+    username = htmlElement.find('a').attrib['href'][1:]
+    fullname = htmlElement.find('a').find('span').text
+    return User(login=username, full_name=fullname)
+
+def make_following(followed, followerElement):
+    followerUsername = followerElement.find('a').attrib['href'][1:]
+    return Following(followed_user_login=followed,
+                     following_user_login=followerUsername)
+
+def scrap_username_followers(username):
+    followersPage = pq(url="http://slideshare.net/%s/followers" % username)
+    followersProfiles = [x for x in followersPage('ul.userList div.userMeta_profile')]
+    relations = [[make_following(username, followerElement), make_user(followerElement)]
+      for followerElement in followersProfiles]
+    return list(itertools.chain.from_iterable(relations))
 
 def scrap_and_save_slideshow(ssid, session):
     print "downloading slideshow with ID: %s" % ssid
     ss_as_dict = api.get_slideshow_by_id(ssid)
     ss = dict_to_slideshow(ss_as_dict)
     d = pq(url=ss.url)
+    followingAndUsers = scrap_username_followers(ss.author)
     scrap_remaining_sideshow_info(d, ss)
     related = scrap_related(d, ss.id)
     related_ssids = [r.related_ssid for r in related]
     if Config['verbose'] == 'True':
         for r_ssid in related_ssids:
             print "\trelated ID: %s" % r_ssid
-    save_all_and_commit(related + [ss], session)
+    save_all_and_commit(related + [ss] + followingAndUsers, session)
     return related_ssids
 
 
