@@ -19,7 +19,7 @@ def dict_to_slideshow(ss_as_dict):
         language_code=check_empty(ss_as_dict, 'Language'),
         format_code=check_empty(ss_as_dict, 'Format'),
         slideshow_type_code=check_empty(ss_as_dict, 'SlideshowType', int),
-        author=check_empty(ss_as_dict, 'UserID'),
+        author=check_empty(ss_as_dict, 'Username'),
         download_count=check_empty(ss_as_dict, 'NumDownloads', int),
         view_count=check_empty(ss_as_dict, 'NumViews', int),
         # embed_count - scraping
