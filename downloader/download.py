@@ -60,19 +60,30 @@ def scrap_username_following(username):
 def scarap_username_following_and_followers(username):
     return scrap_username_followers(username) + scrap_username_following(username)
 
+def is_user_processed(username):
+   query = get_session().query(User).filter_by(login=username)
+   return query.all() != []
+
+def process_user(username):
+    if not is_user_processed(username):
+        if Config['verbose'] == 'True':
+            print "\tprocessing username: %s" % username
+        return [User(login=username)] + scarap_username_following_and_followers(username)
+    return []
+
 def scrap_and_save_slideshow(ssid, session):
     print "downloading slideshow with ID: %s" % ssid
     ss_as_dict = api.get_slideshow_by_id(ssid)
     ss = dict_to_slideshow(ss_as_dict)
     d = pq(url=ss.url)
-    followingAndFollowers = scarap_username_following_and_followers(ss.author)
+    userRelatedEntities = process_user(ss.author)
     scrap_remaining_sideshow_info(d, ss)
     related = scrap_related(d, ss.id)
     related_ssids = [r.related_ssid for r in related]
     if Config['verbose'] == 'True':
         for r_ssid in related_ssids:
             print "\trelated ID: %s" % r_ssid
-    save_all_and_commit(related + [ss] + followingAndFollowers, session)
+    save_all_and_commit(related + [ss] + userRelatedEntities, session)
     return related_ssids
 
 
