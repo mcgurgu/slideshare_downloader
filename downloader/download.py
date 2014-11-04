@@ -43,8 +43,22 @@ def handle_following(username, followingHtml):
     return [make_following(followingUsername, username), 
             make_user(followingUsername, followingFullname)]
 
+def calculate_followers_or_following_pages(page):
+    paginationButtons = page('div.pagination li')
+    if paginationButtons:
+        return int(paginationButtons[-2].find('a').text)
+    return 1
+
 def scrap_username_followers(username):
     followersPage = pq(url="http://slideshare.net/%s/followers" % username)
+    pages = calculate_followers_or_following_pages(followersPage)
+    entities = []
+    for p in range(1, pages+1):
+        entities.extend(do_scrap_username_followers(username, p))
+    return entities
+
+def do_scrap_username_followers(username, page):
+    followersPage = pq(url="http://slideshare.net/%s/followers/%d" % (username, page))
     followersProfiles = [x for x in followersPage('ul.userList div.userMeta_profile')]
     relations = [handle_followers(username, followerElement)
       for followerElement in followersProfiles]
@@ -52,6 +66,14 @@ def scrap_username_followers(username):
 
 def scrap_username_following(username):
     followingPage = pq(url="http://slideshare.net/%s/following" % username)
+    pages = calculate_followers_or_following_pages(followingPage)
+    entities = []
+    for p in range(1, pages+1):
+        entities.extend(do_scrap_username_following(username, p))
+    return entities
+
+def do_scrap_username_following(username, page):
+    followingPage = pq(url="http://slideshare.net/%s/following/%d" % (username, page))
     followingProfiles = [x for x in followingPage('ul.userList div.userMeta_profile')]
     relations = [handle_following(username, followingElement)
       for followingElement in followingProfiles]
