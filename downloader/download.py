@@ -103,4 +103,3 @@ if __name__ == '__main__':
         scraped.add(ssid)
         nonscraped.update(set(related_ssids))
         nonscraped.difference_update(scraped)
-        nonscraped = []
