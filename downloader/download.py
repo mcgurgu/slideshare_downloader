@@ -34,14 +34,20 @@ def make_following(followed, following):
 def handle_followers(username, followedHtml):
     followedUsername = followedHtml.find('a').attrib['href'][1:]
     followedFullname = followedHtml.find('a').find('span').text
-    return [make_following(username, followedUsername), 
-            make_user(followedUsername, followedFullname)]
+    following = make_following(username, followedUsername)
+    if is_user_processed(followedUsername):
+        return [following]
+    else:
+        return [following, make_user(followedUsername, followedFullname)]
 
 def handle_following(username, followingHtml):
     followingUsername = followingHtml.find('a').attrib['href'][1:]
     followingFullname = followingHtml.find('a').find('span').text
-    return [make_following(followingUsername, username), 
-            make_user(followingUsername, followingFullname)]
+    following = make_following(followingUsername, username)
+    if is_user_processed(followingUsername):
+        return [following]
+    else:
+        return [following, make_user(followingUsername, followingFullname)]
 
 def calculate_followers_or_following_pages(page):
     paginationButtons = page('div.pagination li')
@@ -79,33 +85,34 @@ def do_scrap_username_following(username, page):
       for followingElement in followingProfiles]
     return list(itertools.chain.from_iterable(relations))
 
-def scarap_username_following_and_followers(username):
-    return scrap_username_followers(username) + scrap_username_following(username)
+def scarap_username_following_and_followers(username, session):
+    save_all_and_commit(scrap_username_followers(username), session)
+    save_all_and_commit(scrap_username_following(username), session)
 
 def is_user_processed(username):
    query = get_session().query(User).filter_by(login=username)
    return query.all() != []
 
-def process_user(username):
+def process_user(username,session):
     if not is_user_processed(username):
         if Config['verbose'] == 'True':
             print "\tprocessing username: %s" % username
-        return [User(login=username)] + scarap_username_following_and_followers(username)
-    return []
+        save_all_and_commit([User(login=username)], session)
+        scarap_username_following_and_followers(username, session)
 
 def scrap_and_save_slideshow(ssid, session):
     print "downloading slideshow with ID: %s" % ssid
     ss_as_dict = api.get_slideshow_by_id(ssid)
     ss = dict_to_slideshow(ss_as_dict)
     d = pq(url=ss.url)
-    userRelatedEntities = process_user(ss.author)
+    process_user(ss.author, session)
     scrap_remaining_sideshow_info(d, ss)
     related = scrap_related(d, ss.id)
     related_ssids = [r.related_ssid for r in related]
     if Config['verbose'] == 'True':
         for r_ssid in related_ssids:
             print "\trelated ID: %s" % r_ssid
-    save_all_and_commit(related + [ss] + userRelatedEntities, session)
+    save_all_and_commit(related + [ss], session)
     return related_ssids
 
 
