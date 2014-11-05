@@ -128,7 +128,11 @@ if __name__ == '__main__':
 
     while len(nonscraped) > 0:
         ssid = nonscraped.pop()
-        related_ssids = scrap_and_save_slideshow(ssid, session)
+        related_ssids = []
+        try:
+            related_ssids = scrap_and_save_slideshow(ssid, session)
+        except Exception as e:
+            print 'Caught exception %s while processing %s' % (e.message, ssid)
         scraped.add(ssid)
         nonscraped.update(set(related_ssids))
         nonscraped.difference_update(scraped)
