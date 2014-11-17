@@ -13,13 +13,15 @@ Running with virtualenv advised
 
       $ pip install -r requirements.txt
 
-2. initialize DB:
+2. copy ``config.py`` to ``config_my.py`` and provide required values
+
+3. initialize DB:
 
   .. code-block:: bash
 
       $ python downloader/persistence.py
 
-3. start the download (interrupt with ^C - data are saved after downloading each slideshow):
+4. start the download (interrupt with ^C - data are saved after downloading each slideshow):
 
   .. code-block:: bash
 

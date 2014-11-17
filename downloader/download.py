@@ -3,7 +3,7 @@ import itertools
 
 from pyquery import PyQuery as pq
 
-from config import Config
+import config_my as config
 from downloader.converter import dict_to_slideshow
 from downloader.dictionary_tables import cached_category_ids
 from downloader.model import Related, User, Following, SlideshowHasCategory
@@ -109,7 +109,7 @@ def scrap_username_following_and_followers(username):
 
 def process_user(username):
     if not is_user_processed(username):
-        if Config['verbose'] == 'True':
+        if config.verbose:
             print "\tprocessing username: %s" % username
         save_all_and_commit([User(username=username)])
         scrap_username_following_and_followers(username)
@@ -127,7 +127,7 @@ def scrap_and_save_slideshow(ssid):
     categories_link = scrap_categories_link(d, ss)
     related = scrap_related(d, ss.id)
     related_ssids = [r.related_ssid for r in related]
-    if Config['verbose'] == 'True':
+    if config.verbose:
         for r_ssid in related_ssids:
             print "\trelated ID: %s" % r_ssid
     save_all_and_commit(related + [ss] + categories_link)
@@ -135,7 +135,7 @@ def scrap_and_save_slideshow(ssid):
 
 
 if __name__ == '__main__':
-    ssid = sys.argv[1] if len(sys.argv) > 1 else Config['init_ssid']
+    ssid = sys.argv[1] if len(sys.argv) > 1 else config.init_ssid
 
     api = Pyslideshare()
 

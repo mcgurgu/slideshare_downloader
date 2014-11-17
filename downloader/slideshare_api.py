@@ -4,7 +4,7 @@ from hashlib import sha1
 import sys
 import urllib2
 
-from config import Config
+from downloader import config_my as config
 from downloader.xml2dict import fromstring
 
 
@@ -21,9 +21,9 @@ class Pyslideshare:
     }
 
     def __init__(self):
-        self.api_key = Config['api_key']
-        self.secret_key = Config['secret_key']
-        self.verbose = Config['verbose']
+        self.api_key = config.api_key
+        self.secret_key = config.secret_key
+        self.verbose = config.verbose
 
     def _prepare_url_params(self, **args):
         ts = int(time.time())

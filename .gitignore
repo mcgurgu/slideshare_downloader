@@ -5,5 +5,5 @@
 *.egg
 *.egg-info
 
-downloader/config.json
 slideshare.db
+downloader/config_my.py
