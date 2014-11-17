@@ -4,42 +4,35 @@ _lang_id_by_code = {}
 _format_id_by_code = {}
 _category_id_by_name = {}
 
-# TODO(vucalur): refactor: DRY
 
-def _load_from_cache(key, cache, query_method, session):
+def _load_from_cache(key, cache, query_method):
     if not key in cache:
-        id = query_method(key, session)
+        id = query_method(key)
         cache[key] = id
     return cache[key]
 
 
-# TODO(vucalur): refactor: get rid of passing session
-def cached_language_id(lang_code, session):
+def cached_language_id(lang_code):
     return _load_from_cache(
         lang_code,
         _lang_id_by_code,
-        get_language_id,
-        session
+        get_language_id
     )
 
 
-# TODO(vucalur): refactor: get rid of passing session
-def cached_format_id(format_code, session):
+def cached_format_id(format_code):
     return _load_from_cache(
         format_code,
         _format_id_by_code,
-        get_format_id,
-        session
+        get_format_id
     )
 
 
-# TODO(vucalur): refactor: get rid of passing session
-def cached_category_ids(cat_names, session):
+def cached_category_ids(cat_names):
     return [_load_from_cache(
         name,
         _category_id_by_name,
-        get_category_id,
-        session
+        get_category_id
     ) for name in cat_names]
 
 

@@ -5,43 +5,40 @@ from downloader.config import Config
 from downloader.model import Format, Type, Category, Base, User, Language
 
 
-engine = create_engine('sqlite:///' + Config['db.filename'] + '.db')
+__engine = create_engine('sqlite:///' + Config['db.filename'] + '.db')
+
+__session = None
 
 
-def get_session():
-    DBSession = sessionmaker(bind=engine)
-    return DBSession()
+def save_all_and_commit(data):
+    __session.add_all(data)
+    __session.commit()
 
 
-def save_all_and_commit(data, session):
-    session.add_all(data)
-    session.commit()
-
-
-def is_user_processed(username, session):
-    query = session.query(User).filter_by(username=username)
+def is_user_processed(username):
+    query = __session.query(User).filter_by(username=username)
     return query.all() != []
 
 
 # TODO(vucalur): refactor: DRY 1.a
-def get_language_id(lang_code, session):
-    query = session.query(Language.id).filter_by(code=lang_code)
+def get_language_id(lang_code):
+    query = __session.query(Language.id).filter_by(code=lang_code)
     return query.all()
 
 
 # TODO(vucalur): refactor: DRY 1.b
-def get_format_id(format_code, session):
-    query = session.query(Format.id).filter_by(code=format_code)
+def get_format_id(format_code):
+    query = __session.query(Format.id).filter_by(code=format_code)
     return query.all()
 
 
 # TODO(vucalur): refactor: DRY 1.c
-def get_category_id(cat_name, session):
-    query = session.query(Category.id).filter_by(name=cat_name)
+def get_category_id(cat_name):
+    query = __session.query(Category.id).filter_by(name=cat_name)
     return query.all()
 
 
-def _populate_dictionary_tables(session):
+def _populate_dictionary_tables():
     formats = [Format(code='ppt'),
                Format(code='pdf'),
                Format(code='pps'),
@@ -63,10 +60,12 @@ def _populate_dictionary_tables(session):
     categories = [Category(name=cat) for cat in default_category_names]
 
     data = formats + types + categories
-    save_all_and_commit(data, session)
+    save_all_and_commit(data)
 
+
+DBSession = sessionmaker(bind=__engine)
+__session = DBSession()
 
 if __name__ == '__main__':
-    session = get_session()
-    Base.metadata.create_all(engine)
-    _populate_dictionary_tables(session)
+    Base.metadata.create_all(__engine)
+    _populate_dictionary_tables()

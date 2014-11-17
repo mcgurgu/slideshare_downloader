@@ -9,7 +9,7 @@ def check_empty(ss_as_dict, property, type=str):
         return type()
 
 
-def dict_to_slideshow(ss_as_dict, session):
+def dict_to_slideshow(ss_as_dict):
     return Slideshow(
         id=check_empty(ss_as_dict, 'ID', int),
         title=check_empty(ss_as_dict, 'Title'),
@@ -18,12 +18,10 @@ def dict_to_slideshow(ss_as_dict, session):
         created_date=check_empty(ss_as_dict, 'Created'),
         updated_date=check_empty(ss_as_dict, 'Updated'),
         language_id=cached_language_id(
-            check_empty(ss_as_dict, 'Language'),
-            session
+            check_empty(ss_as_dict, 'Language')
         ),
         format_id=cached_format_id(
-            check_empty(ss_as_dict, 'Format'),
-            session
+            check_empty(ss_as_dict, 'Format')
         ),
         type_code=check_empty(ss_as_dict, 'SlideshowType', int),
         username=check_empty(ss_as_dict, 'Username'),

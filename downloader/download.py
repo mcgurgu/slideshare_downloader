@@ -7,7 +7,7 @@ from config import Config
 from downloader.converter import dict_to_slideshow
 from downloader.dictionary_tables import cached_category_ids
 from downloader.model import Related, User, Following, SlideshowHasCategory
-from downloader.persistence import save_all_and_commit, get_session, is_user_processed
+from downloader.persistence import save_all_and_commit, is_user_processed
 from slideshare_api import Pyslideshare
 
 
@@ -15,10 +15,10 @@ def scrap_remaining_sideshow_info(d, ss):
     ss.embeds_count = int(d('dl.statistics > dd.from-embed').text().replace(',', ''))
 
 
-def scrap_categories_link(d, ss, session):
+def scrap_categories_link(d, ss):
     category_names = [elem.text for elem in d('div.info-generic li.category > a')]
     categories_link = [SlideshowHasCategory(ssid=ss.id, category_id=cat_id)
-                       for cat_id in cached_category_ids(category_names, session)]
+                       for cat_id in cached_category_ids(category_names)]
     return categories_link
 
 
@@ -102,35 +102,35 @@ def do_scrap_following(username, page):
     return list(itertools.chain.from_iterable(relations))
 
 
-def scrap_username_following_and_followers(username, session):
-    save_all_and_commit(scrap_followers(username), session)
-    save_all_and_commit(scrap_following(username), session)
+def scrap_username_following_and_followers(username):
+    save_all_and_commit(scrap_followers(username))
+    save_all_and_commit(scrap_following(username))
 
 
-def process_user(username, session):
-    if not is_user_processed(username, session):
+def process_user(username):
+    if not is_user_processed(username):
         if Config['verbose'] == 'True':
             print "\tprocessing username: %s" % username
-        save_all_and_commit([User(username=username)], session)
-        scrap_username_following_and_followers(username, session)
+        save_all_and_commit([User(username=username)])
+        scrap_username_following_and_followers(username)
         return [User(username=username)]
     return []
 
 
-def scrap_and_save_slideshow(ssid, session):
+def scrap_and_save_slideshow(ssid):
     print "downloading slideshow with ID: %s" % ssid
     ss_as_dict = api.get_slideshow_by_id(ssid)
-    ss = dict_to_slideshow(ss_as_dict, session)
+    ss = dict_to_slideshow(ss_as_dict)
     d = pq(url=ss.url)
-    process_user(ss.username, session)
+    process_user(ss.username)
     scrap_remaining_sideshow_info(d, ss)
-    categories_link = scrap_categories_link(d, ss, session)
+    categories_link = scrap_categories_link(d, ss)
     related = scrap_related(d, ss.id)
     related_ssids = [r.related_ssid for r in related]
     if Config['verbose'] == 'True':
         for r_ssid in related_ssids:
             print "\trelated ID: %s" % r_ssid
-    save_all_and_commit(related + [ss] + categories_link, session)
+    save_all_and_commit(related + [ss] + categories_link)
     return related_ssids
 
 
@@ -138,7 +138,6 @@ if __name__ == '__main__':
     ssid = sys.argv[1] if len(sys.argv) > 1 else Config['init_ssid']
 
     api = Pyslideshare()
-    session = get_session()
 
     scraped = set()
     nonscraped = set()
@@ -148,7 +147,7 @@ if __name__ == '__main__':
         ssid = nonscraped.pop()
         related_ssids = []
         try:
-            related_ssids = scrap_and_save_slideshow(ssid, session)
+            related_ssids = scrap_and_save_slideshow(ssid)
         except Exception as e:
             print 'Caught exception %s while processing %s' % (e.message, ssid)
         scraped.add(ssid)
