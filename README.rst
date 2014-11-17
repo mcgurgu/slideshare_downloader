@@ -19,7 +19,7 @@ Running with virtualenv advised
 
   .. code-block:: bash
 
-      $ python downloader/persistence.py
+      $ python downloader/db/persistence.py
 
 4. start the download (interrupt with ^C - data are saved after downloading each slideshow):
 

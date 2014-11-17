@@ -1,5 +1,5 @@
-from downloader.dictionary_tables import cached_language_id, cached_format_id
-from downloader.model import Slideshow
+from downloader.db.dictionary_tables import cached_language_id, cached_format_id
+from downloader.db.model import Slideshow
 
 
 def check_empty(ss_as_dict, property, type=str):

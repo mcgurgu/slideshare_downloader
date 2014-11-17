@@ -3,12 +3,12 @@ import itertools
 
 from pyquery import PyQuery as pq
 
-import config_my as config
-from downloader.converter import dict_to_slideshow
-from downloader.dictionary_tables import cached_category_ids
-from downloader.model import Related, User, Following, SlideshowHasCategory
-from downloader.persistence import save_all_and_commit, is_user_processed
-from slideshare_api import Pyslideshare
+from api.converter import dict_to_slideshow
+from db.dictionary_tables import cached_category_ids
+from db.model import Related, User, Following, SlideshowHasCategory
+from db.persistence import save_all_and_commit, is_user_processed
+from api.slideshare_api import Pyslideshare
+from downloader.config import config_my as config
 
 
 def scrap_remaining_sideshow_info(d, ss):
@@ -117,7 +117,7 @@ def process_user(username):
     return []
 
 
-def scrap_and_save_slideshow(ssid):
+def scrap_and_save_slideshow(ssid, api):
     print "downloading slideshow with ID: %s" % ssid
     ss_as_dict = api.get_slideshow_by_id(ssid)
     ss = dict_to_slideshow(ss_as_dict)
@@ -147,7 +147,7 @@ if __name__ == '__main__':
         ssid = nonscraped.pop()
         related_ssids = []
         try:
-            related_ssids = scrap_and_save_slideshow(ssid)
+            related_ssids = scrap_and_save_slideshow(ssid, api)
         except Exception as e:
             print 'Caught exception %s while processing %s' % (e.message, ssid)
         scraped.add(ssid)

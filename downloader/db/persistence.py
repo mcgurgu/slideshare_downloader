@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from downloader import config_my as config
-from downloader.model import Format, Type, Category, Base, User, Language
+from downloader.config import config_my as config
+from downloader.db.model import Format, Type, Category, Base, User, Language
 
 
 __engine = create_engine('sqlite:///' + config.db_filename + '.db')

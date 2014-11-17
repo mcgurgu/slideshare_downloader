@@ -4,8 +4,8 @@ from hashlib import sha1
 import sys
 import urllib2
 
-from downloader import config_my as config
-from downloader.xml2dict import fromstring
+from xml2dict import fromstring
+from downloader.config import config_my as config
 
 
 class Pyslideshare:

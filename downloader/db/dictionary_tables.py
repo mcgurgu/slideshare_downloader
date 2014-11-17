@@ -1,4 +1,4 @@
-from  persistence import *
+from downloader.db.persistence import get_language_id, get_format_id, get_category_id
 
 _lang_id_by_code = {}
 _format_id_by_code = {}
