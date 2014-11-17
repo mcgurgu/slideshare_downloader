@@ -63,13 +63,18 @@ class User(Base):
     __tablename__ = 'user'
     username = Column(String, primary_key=True)  # leaving off username (API) as PK
     city = Column(String)
-    # TODO(vucalur): introduce dictionary table for country
-    country = Column(String)
+    country_id = Column(Integer, ForeignKey('country.id'))
     organization = Column(String)
     full_name = Column(String)
     description = Column(String)
     joined_date = Column(DateTime)
     slideshows = relationship('Slideshow', backref="user")
+
+
+class Country(Base):
+    __tablename__ = 'country'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, unique=True, nullable=False)
 
 
 class Category(Base):
