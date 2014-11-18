@@ -131,12 +131,6 @@ def pq_to_slideshow(pq_page):
         url=pq_page.base_url,
         created_date=pq_page('meta[name=slideshow_created_at]')[0].attrib['content'],
         updated_date=pq_page('meta[name=slideshow_updated_at]')[0].attrib['content'],
-        # TODO(vucalur): remove
-        # Szymon: Cannot find it on the page; setting fixed value for now
-        language_id='en',
-        # TODO(vucalur): remove
-        # Szymon: Cannot find it on the page; setting fixed value for now
-        format_id='ppt',
         type_id=get_type_id(type_name),
         username=pq_page('meta[name=slideshow_author]')[0].attrib['content'].split('/')[-1],
         views_on_slideshare_count=human_readable_str2int(ss_stats[1].text),

@@ -18,8 +18,6 @@ class Slideshow(Base):
     url = Column(String, nullable=False)
     created_date = Column(DateTime, nullable=False)
     updated_date = Column(DateTime)
-    language_id = Column(Integer, ForeignKey('language.id'))
-    format_id = Column(Integer, ForeignKey('format.id'))
     type_id = Column(Integer, ForeignKey('type.id'))
     username = Column(String, ForeignKey('user.username'))
 
@@ -40,20 +38,6 @@ class Slideshow(Base):
             super(Slideshow, self).__setattr__(key, datetime.strptime(value, DATETIME_FORMAT))
         else:
             super(Slideshow, self).__setattr__(key, value)
-
-
-class Language(Base):
-    __tablename__ = 'language'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    code = Column(String, unique=True, nullable=False)
-    slideshows = relationship('Slideshow', backref="language")
-
-
-class Format(Base):
-    __tablename__ = 'format'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    code = Column(String, unique=True, nullable=False)
-    slideshows = relationship('Slideshow', backref="format")
 
 
 class Type(Base):
