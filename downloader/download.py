@@ -1,10 +1,12 @@
+import json
 import sys
 import itertools
+from urllib import urlopen
 from urlparse import urlparse
 
 from pyquery import PyQuery as pq
 
-from db.model import Related, User, Following, SlideshowHasCategory, Slideshow
+from db.model import Related, User, Following, SlideshowHasCategory, Slideshow, Comment, Like
 from db.persistence import save_all_and_commit, is_user_processed, get_category_ids
 from downloader.config import config_my as config
 from downloader.db.persistence import get_type_id
@@ -137,11 +139,48 @@ def pq_to_slideshow(pq_page):
         views_from_embeds_count=human_readable_str2int(ss_stats[2].text),
 
         downloads_count=int(pq_page('meta[name=slideshow_download_count]')[0].attrib['content']),
-        embeds_count=int(pq_page('meta[name=slideshow_embed_count]')[0].attrib['content']),
+        embeds_count=int(pq_page('meta[name=slideshow_embed_count]')[0].attrib['content'])
+    )
 
-        # TODO(vucalur): remove when comments & likes implemented
-        comments_count=int(pq_page('meta[name=slideshow_comment_count]')[0].attrib['content']),
-        likes_count=int(pq_page('meta[name=slideshow_favorites_count]')[0].attrib['content']))
+
+def get_comments(ssid):
+    def json2Comment(comment_json):
+        # TODO(vucalur): to consider: schedule downloading commenting User ?
+        # TODO(vucalur): many user data are already available in comment_json - performance
+        return Comment(
+            text=comment_json['body'],
+            username=comment_json['login']
+        )
+
+    response = urlopen("http://www.slideshare.net/~/slideshow/comments/" + str(ssid))
+    comments_json = json.loads(response.read())
+    comments = [json2Comment(comment_json) for comment_json in comments_json]
+    for comment in comments:
+        comment.ssid = ssid
+    log.info("\tfound total %d Comment(s)" % len(comments))
+    return comments
+
+
+def get_likes(ssid):
+    def json2Like(like_json):
+        return Like(
+            username=like_json['login']
+        )
+
+    likes = []
+    offset = 0
+    while True:
+        response = urlopen("http://www.slideshare.net/~/slideshow/favorites_list/%d?offset=%d" % (ssid, offset))
+        new_likes_json = json.loads(response.read())
+        if len(new_likes_json) == 0:
+            break
+        log.info("\t\tdownloaded %d more Like(s)" % len(new_likes_json))
+        likes.extend(json2Like(new_like_json) for new_like_json in new_likes_json)
+        offset += 20
+    for like in likes:
+        like.ssid = ssid
+    log.info("\tfound total %d Like(s)" % len(likes))
+    return likes
 
 
 def process_slideshow(url):
@@ -152,7 +191,9 @@ def process_slideshow(url):
     categories_link = scrap_categories_link(d, ss)
     related_objs, related_urls = scrap_related(d, ss.ssid)
     log.info("\tRelated count: %s" % len(related_urls))
-    save_all_and_commit(related_objs + [ss] + categories_link)
+    comments = get_comments(ss.ssid)
+    likes = get_likes(ss.ssid)
+    save_all_and_commit(related_objs + [ss] + categories_link + comments + likes)
     log.info("saving Slideshow(url=%s) SUCCESS" % url)
     return related_urls
 

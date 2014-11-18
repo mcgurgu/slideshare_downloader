@@ -26,10 +26,6 @@ class Slideshow(Base):
     views_from_embeds_count = Column(Integer, nullable=False)
     embeds_count = Column(Integer, nullable=False)
 
-    # TODO(vucalur): remove when comments & likes implemented
-    comments_count = Column(Integer, nullable=False)
-    likes_count = Column(Integer, nullable=False)
-
     categories = relationship('Category', secondary='slideshow_has_category')
     tags = relationship('Tag', secondary='slideshow_has_tag')
 
@@ -118,7 +114,6 @@ class Like(Base):
 class Comment(Base):
     __tablename__ = 'comment'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    created_date = Column(DateTime, nullable=False)
     text = Column(String)
     username = Column(String, ForeignKey('user.username'), nullable=False)
     ssid = Column(Integer, ForeignKey('slideshow.ssid'), nullable=False)
