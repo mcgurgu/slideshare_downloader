@@ -67,23 +67,7 @@ def get_category_ids(cat_names):
     ) for cat_name in cat_names]
 
 
-def _populate_dictionary_tables():
-    types = [Type(id=0, name='presentation'),
-             Type(id=1, name='document'),
-             Type(id=2, name='portfolio'),
-             Type(id=3, name='video')]
-
-    save_all_and_commit(types)
-
-
 DBSession = sessionmaker(bind=__engine)
 __session = DBSession()
+Base.metadata.create_all(__engine)
 
-
-def __main():
-    Base.metadata.create_all(__engine)
-    _populate_dictionary_tables()
-
-
-if __name__ == '__main__':
-    __main()
