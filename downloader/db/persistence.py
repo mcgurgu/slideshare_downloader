@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.exc import NoResultFound
 
 from downloader.config import config_my as config
 from downloader.db.model import Format, Type, Category, Base, User, Language
@@ -20,22 +21,27 @@ def is_user_processed(username):
     return query.all() != []
 
 
-# TODO(vucalur): refactor: DRY 1.a
-def get_language_id(lang_code):
+def get_or_create_language_id(lang_code):
     query = __session.query(Language.id).filter_by(code=lang_code)
-    return query.all()
+    try:
+        return query.one()[0]
+    except NoResultFound:
+        new_lang = Language(code=lang_code)
+        __session.add(new_lang)
+        __session.commit()
+        return new_lang.id
+
+
+# TODO(vucalur): refactor: DRY 1.a
+def get_format_id(format_code):
+    query = __session.query(Format.id).filter_by(code=format_code)
+    return query.one()[0]
 
 
 # TODO(vucalur): refactor: DRY 1.b
-def get_format_id(format_code):
-    query = __session.query(Format.id).filter_by(code=format_code)
-    return query.all()
-
-
-# TODO(vucalur): refactor: DRY 1.c
 def get_category_id(cat_name):
     query = __session.query(Category.id).filter_by(name=cat_name)
-    return query.all()
+    return query.one()[0]
 
 
 def _populate_dictionary_tables():
