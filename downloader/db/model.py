@@ -52,6 +52,9 @@ class User(Base):
     full_name = Column(String)
     description = Column(String)
     joined_date = Column(DateTime)
+    url = Column(String)
+    about = Column(String)
+    works_for = Column(String)
     slideshows = relationship('Slideshow', backref="user")
 
 

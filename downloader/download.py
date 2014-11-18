@@ -9,7 +9,7 @@ from pyquery import PyQuery as pq
 from db.model import Related, User, Following, SlideshowHasCategory, Slideshow, Comment, Like
 from db.persistence import save_all_and_commit, is_user_processed, get_category_ids
 from downloader.config import config_my as config
-from downloader.db.persistence import get_type_id
+from downloader.db.persistence import get_type_id, get_country_id
 from downloader.util.logger import log
 
 
@@ -111,10 +111,33 @@ def scrap_username_following_and_followers(username):
     log.debug("\t\tsaving following SUCCESS")
 
 
+def scrap_user(username):
+    user_page = pq(url="http://slideshare.net/%s/" % username)
+    # TODO(Szymon): [0].text --> .text(): removes IndexOutOfRange problem if no matches, creates problem if multiple elements match the selector
+    full_name = user_page('h1[itemprop="name"]').text()
+    city = user_page('span[itemprop="addressLocality"]').text()
+    country_name = user_page('span[itemprop="addressCountry"]').text()
+    country_id = get_country_id(country_name)
+    url = user_page('a[itemprop="url"]')[0].text
+    about = user_page('span[itemprop="description"]').text()
+    works_for = user_page('span[itemprop="worksFor"]').text()
+
+
+    return User(
+        username=username,
+        full_name=full_name,
+        city=city,
+        country_id=country_id,
+        url=url,
+        about=about,
+        works_for=works_for
+    )
+
+
 def process_user(username):
     if not is_user_processed(username):
         log.info("\tprocessing User(username=%s)" % username)
-        save_all_and_commit([User(username=username)])
+        save_all_and_commit([scrap_user(username)])
         scrap_username_following_and_followers(username)
         log.info("\tprocessing User(username=%s) SUCCESS" % username)
 
