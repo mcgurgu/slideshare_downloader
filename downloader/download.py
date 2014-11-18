@@ -5,7 +5,7 @@ from pyquery import PyQuery as pq
 
 from api.converter import dict_to_slideshow
 from db.model import Related, User, Following, SlideshowHasCategory
-from db.persistence import save_all_and_commit, is_user_processed, get_category_ids
+from db.persistence import save_all_and_commit, is_user_processed, get_category_ids, pq_to_slideshow
 from api.slideshare_api import Pyslideshare
 from downloader.config import config_my as config
 from downloader.util.logger import log
@@ -128,19 +128,18 @@ def process_user(username):
         log.info("\tprocessing User(username=%s) SUCCESS" % username)
 
 
-def scrap_and_save_slideshow(ssid, api):
-    log.info("downloading Slideshow(ssid=%s)" % ssid)
-    ss_as_dict = api.get_slideshow_by_id(ssid)
-    ss = dict_to_slideshow(ss_as_dict)
+def scrap_and_save_slideshow(url, api):
+    log.info("downloading Slideshow(url=%s)" % url)
+    d = pq(url=url)
+    ss = pq_to_slideshow(d)
     process_user(ss.username)
-    d = pq(url=ss.url)
     scrap_remaining_sideshow_info(d, ss)
     categories_link = scrap_categories_link(d, ss)
     related = scrap_related(d, ss.id)
     related_ssids = [r.related_ssid for r in related]
     log.info("\trelated IDs: %s" % str(related_ssids))
     save_all_and_commit(related + [ss] + categories_link)
-    log.info("saving Slideshow(ssid=%s) SUCCESS" % ssid)
+    log.info("saving Slideshow(ssid=%s) SUCCESS" % url)
     return related_ssids
 
 
@@ -151,7 +150,9 @@ def _main():
 
     scraped = set()
     nonscraped = set()
-    nonscraped.add(ssid)
+    # nonscraped.add(ssid)
+    url = "http://www.slideshare.net/al3x/why-scala-for-web-20"
+    scrap_and_save_slideshow(url,api)
 
     while len(nonscraped) > 0:
         ssid = nonscraped.pop()

@@ -26,6 +26,8 @@ class Slideshow(Base):
     views_on_slideshare_count = Column(Integer, nullable=False)
     views_from_embeds_count = Column(Integer, nullable=False)
     embeds_count = Column(Integer, nullable=False)
+    comments_count = Column(Integer, nullable=False)
+    likes_count = Column(Integer, nullable=False)
 
     categories = relationship('Category', secondary='slideshow_has_category')
     tags = relationship('Tag', secondary='slideshow_has_tag')
