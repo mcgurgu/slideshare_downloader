@@ -28,8 +28,6 @@ def dict_to_slideshow(ss_as_dict):
         downloads_count=check_empty(ss_as_dict, 'NumDownloads', int),
         views_count=check_empty(ss_as_dict, 'NumViews', int),
         # embeds_count - scraping
-        comments_count=check_empty(ss_as_dict, 'NumComments', int),
-        likes_count=check_empty(ss_as_dict, 'NumFavorites', int),
         # categories - scraping
         # tags - scraping
     )

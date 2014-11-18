@@ -25,8 +25,6 @@ class Slideshow(Base):
     downloads_count = Column(Integer, nullable=False)
     views_count = Column(Integer, nullable=False)
     embeds_count = Column(Integer, nullable=False)
-    comments_count = Column(Integer, nullable=False)
-    likes_count = Column(Integer, nullable=False)  # aka favorites_count
 
     categories = relationship('Category', secondary='slideshow_has_category')
     tags = relationship('Tag', secondary='slideshow_has_tag')
