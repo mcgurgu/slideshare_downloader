@@ -25,8 +25,9 @@ def dict_to_slideshow(ss_as_dict):
         ),
         type_code=check_empty(ss_as_dict, 'SlideshowType', int),
         username=check_empty(ss_as_dict, 'Username'),
-        downloads_count=check_empty(ss_as_dict, 'NumDownloads', int),
-        views_count=check_empty(ss_as_dict, 'NumViews', int),
+        # downloads_count - scraping
+        # views_on_slideshare_count - scraping
+        # views_from_embeds_count - scraping
         # embeds_count - scraping
         # categories - scraping
         # tags - scraping

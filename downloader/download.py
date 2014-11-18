@@ -4,7 +4,6 @@ import itertools
 from pyquery import PyQuery as pq
 
 from api.converter import dict_to_slideshow
-
 from db.dictionary_tables import cached_category_ids
 from db.model import Related, User, Following, SlideshowHasCategory
 from db.persistence import save_all_and_commit, is_user_processed
@@ -13,8 +12,17 @@ from downloader.config import config_my as config
 from downloader.util.logger import log
 
 
+def human_readable_str2int(str_):
+    return int(str_.replace(',', '').replace(' ', ''))
+
+
 def scrap_remaining_sideshow_info(d, ss):
-    ss.embeds_count = int(d('dl.statistics > dd.from-embed').text().replace(',', ''))
+    ss_stats = d('dl.statistics > dd')
+
+    ss.views_on_slideshare_count = human_readable_str2int(ss_stats[1].text)
+    ss.views_from_embeds_count = human_readable_str2int(ss_stats[2].text)
+    ss.embeds_count = human_readable_str2int(ss_stats[3].text)
+    ss.downloads_count = human_readable_str2int(ss_stats[5].text)
 
 
 def scrap_categories_link(d, ss):
@@ -71,6 +79,7 @@ def scrap_followers(username):
     pages = calculate_followers_or_following_pages(followers_page)
     entities = []
     for p in range(1, pages + 1):
+        log.debug("\t\t\tscraping followers, page: %d/%d" % (p, pages))
         entities.extend(do_scrap_followers(username, p))
     return entities
 
@@ -96,6 +105,7 @@ def scrap_following(username):
     pages = calculate_followers_or_following_pages(following_page)
     entities = []
     for p in range(1, pages + 1):
+        log.debug("\t\t\tscraping following, page: %d/%d" % (p, pages))
         entities.extend(do_scrap_following(username, p))
     return entities
 
@@ -119,8 +129,8 @@ def scrap_and_save_slideshow(ssid, api):
     log.info("downloading slideshow, ssid=%s" % ssid)
     ss_as_dict = api.get_slideshow_by_id(ssid)
     ss = dict_to_slideshow(ss_as_dict)
-    d = pq(url=ss.url)
     process_user(ss.username)
+    d = pq(url=ss.url)
     scrap_remaining_sideshow_info(d, ss)
     log.debug("\tscraping slideshow info SUCCESS")
     categories_link = scrap_categories_link(d, ss)

@@ -23,7 +23,8 @@ class Slideshow(Base):
     username = Column(String, ForeignKey('user.username'))
 
     downloads_count = Column(Integer, nullable=False)
-    views_count = Column(Integer, nullable=False)
+    views_on_slideshare_count = Column(Integer, nullable=False)
+    views_from_embeds_count = Column(Integer, nullable=False)
     embeds_count = Column(Integer, nullable=False)
 
     categories = relationship('Category', secondary='slideshow_has_category')
