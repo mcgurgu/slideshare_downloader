@@ -1,13 +1,13 @@
 import sys
 import itertools
+from urlparse import urlparse
 
 from pyquery import PyQuery as pq
 
-from api.converter import dict_to_slideshow
-from db.model import Related, User, Following, SlideshowHasCategory
-from db.persistence import save_all_and_commit, is_user_processed, get_category_ids, pq_to_slideshow
-from api.slideshare_api import Pyslideshare
+from db.model import Related, User, Following, SlideshowHasCategory, Slideshow
+from db.persistence import save_all_and_commit, is_user_processed, get_category_ids
 from downloader.config import config_my as config
+from downloader.db.persistence import get_type_id
 from downloader.util.logger import log
 
 
@@ -15,23 +15,12 @@ def human_readable_str2int(str_):
     return int(str_.replace(',', '').replace(' ', ''))
 
 
-def scrap_remaining_sideshow_info(d, ss):
-    ss_stats = d('dl.statistics > dd')
-
-    ss.views_on_slideshare_count = human_readable_str2int(ss_stats[1].text)
-    ss.views_from_embeds_count = human_readable_str2int(ss_stats[2].text)
-    ss.embeds_count = human_readable_str2int(ss_stats[3].text)
-    ss.downloads_count = human_readable_str2int(ss_stats[5].text)
-
-    log.debug("\tscraping slideshow info SUCCESS")
-
-
 def scrap_categories_link(d, ss):
     # total fuck-up with categories:
     # http://www.slideshare.net/Bufferapp/workspaces-of-buffer-2 - "More in:" - 2 categories
     # but 3from page src: <meta content="Small Business &amp; Entrepreneurship" class="fb_og_meta" property="slideshare:category" name="slideshow_category"> - single category - WTF ?!
     category_names = [elem.text for elem in d('div.categories-container > a')]
-    categories_link = [SlideshowHasCategory(ssid=ss.id, category_id=cat_id)
+    categories_link = [SlideshowHasCategory(ssid=ss.ssid, category_id=cat_id)
                        for cat_id in get_category_ids(category_names)]
     log.info("\tcategory IDs: %s" % str([cat_link.category_id for cat_link in categories_link]))
     return categories_link
@@ -40,11 +29,11 @@ def scrap_categories_link(d, ss):
 def scrap_related(d, relating_ssid):
     elems = d('ul#relatedList li.j-related-item a')
     related_ids = set(e.attrib['data-ssid'] for e in elems)  # set, since page often recommends duplicates
-    related_urls = set("http://slideshare.net%s" % e.attrib['href'] for e in elems)    
-    relations = [Related(
-            related_ssid=ssid,
-            relating_ssid=relating_ssid) for ssid in related_ids]
-    return relations, related_urls
+    related_urls = set("http://slideshare.net%s" % e.attrib['href'] for e in elems)
+    related_objs = [Related(
+        related_ssid=ssid,
+        relating_ssid=relating_ssid) for ssid in related_ids]
+    return related_objs, related_urls
 
 
 def make_user(username, full_name):
@@ -130,16 +119,46 @@ def process_user(username):
         log.info("\tprocessing User(username=%s) SUCCESS" % username)
 
 
-def scrap_and_save_slideshow(url, api):
-    log.info("downloading Slideshow(url=%s)" % url)
+def pq_to_slideshow(pq_page):
+    path_with_ssid = pq_page('meta.twitter_player')[0].attrib['value']
+    ss_stats = pq_page('dl.statistics > dd')
+    type_name = pq_page('meta[name=og_type]')[0].attrib['content'].split(':')[1]
+
+    return Slideshow(
+        ssid=int(urlparse(path_with_ssid).path.split('/')[-1]),
+        title=pq_page('title')[0].text,
+        description=pq_page('meta[name=description]')[0].attrib['content'],
+        url=pq_page.base_url,
+        created_date=pq_page('meta[name=slideshow_created_at]')[0].attrib['content'],
+        updated_date=pq_page('meta[name=slideshow_updated_at]')[0].attrib['content'],
+        # TODO(vucalur): remove
+        # Szymon: Cannot find it on the page; setting fixed value for now
+        language_id='en',
+        # TODO(vucalur): remove
+        # Szymon: Cannot find it on the page; setting fixed value for now
+        format_id='ppt',
+        type_id=get_type_id(type_name),
+        username=pq_page('meta[name=slideshow_author]')[0].attrib['content'].split('/')[-1],
+        views_on_slideshare_count=human_readable_str2int(ss_stats[1].text),
+        views_from_embeds_count=human_readable_str2int(ss_stats[2].text),
+
+        downloads_count=int(pq_page('meta[name=slideshow_download_count]')[0].attrib['content']),
+        embeds_count=int(pq_page('meta[name=slideshow_embed_count]')[0].attrib['content']),
+
+        # TODO(vucalur): remove when comments & likes implemented
+        comments_count=int(pq_page('meta[name=slideshow_comment_count]')[0].attrib['content']),
+        likes_count=int(pq_page('meta[name=slideshow_favorites_count]')[0].attrib['content']))
+
+
+def process_slideshow(url):
+    log.info("processing Slideshow(url=%s)" % url)
     d = pq(url=url)
     ss = pq_to_slideshow(d)
     process_user(ss.username)
-    scrap_remaining_sideshow_info(d, ss)
     categories_link = scrap_categories_link(d, ss)
-    related_relations, related_urls = scrap_related(d, ss.id)
-    log.info("\trelated IDs cnt: %s" % len(related_urls))
-    save_all_and_commit(related_relations + [ss]) #+ categories_link)
+    related_objs, related_urls = scrap_related(d, ss.ssid)
+    log.info("\tRelated count: %s" % len(related_urls))
+    save_all_and_commit(related_objs + [ss] + categories_link)
     log.info("saving Slideshow(url=%s) SUCCESS" % url)
     return related_urls
 
@@ -147,21 +166,19 @@ def scrap_and_save_slideshow(url, api):
 def _main():
     url = sys.argv[1] if len(sys.argv) > 1 else config.init_url
 
-    api = Pyslideshare()
-
     scraped = set()
     nonscraped = set()
     nonscraped.add(url)
 
     while len(nonscraped) > 0:
         url = nonscraped.pop()
-        related_ssids = []
+        related_urls = []
         try:
-            related_url = scrap_and_save_slideshow(url, api)
+            related_urls = process_slideshow(url)
         except Exception as e:
-            log.exception('Caught exception %s while processing %s' % (e.message, ssid))
+            log.exception('Caught exception %s while processing Slideshow(url=%s)' % (e.message, url))
         scraped.add(url)
-        nonscraped.update(set(related_url))
+        nonscraped.update(set(related_urls))
         nonscraped.difference_update(scraped)
 
 
