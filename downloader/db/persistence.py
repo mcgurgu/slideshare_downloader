@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm.exc import NoResultFound
 
 from downloader.config import config_my as config
 from downloader.db.model import Format, Type, Category, Base, User, Language
@@ -18,18 +17,18 @@ def save_all_and_commit(data):
 
 
 def is_user_processed(username):
-    query = __session.query(User).filter_by(username=username)
-    return query.all() != []
+    sole_username = __session.query(User.username).filter_by(username=username).scalar()
+    return sole_username is not None
 
 
 def _get_id_create_when_necessary(query_select, entity, **query_filter):
     query = __session.query(query_select).filter_by(**query_filter)
-    try:
-        id_ = query.one()[0]
+    id_ = query.scalar()
+    if id_ is not None:
         log.debug("DB: found id=%d for %s(%s)" % (id_, entity.__name__, str(query_filter)))
         return id_
-    except NoResultFound:
-        log.debug("DB: %s(%s) not found" % (entity, str(query_filter)))
+    else:
+        log.debug("DB: %s(%s) not found" % (entity.__name__, str(query_filter)))
         new_obj = entity(**query_filter)
         __session.add(new_obj)
         __session.commit()
@@ -37,19 +36,42 @@ def _get_id_create_when_necessary(query_select, entity, **query_filter):
         return new_obj.id
 
 
-def get_or_create_language_id(lang_code):
-    id = _get_id_create_when_necessary(Language.id, Language, code=lang_code)
-    return id
+__lang_id_by_code = {}
+__format_id_by_code = {}
+__category_id_by_name = {}
+
+
+def _load_from_cache(key, cache, query_method):
+    if not key in cache:
+        log.debug("CACHE: key=%s not found in cache=%s" % (key, str(cache)))
+        cache[key] = query_method(key)
+    else:
+        log.debug("CACHE: returning cached value for key=%s" % key)
+    return cache[key]
+
+
+def get_language_id(lang_code):
+    return _load_from_cache(
+        lang_code,
+        __lang_id_by_code,
+        lambda code: _get_id_create_when_necessary(Language.id, Language, code=code)
+    )
 
 
 def get_format_id(format_code):
-    id = _get_id_create_when_necessary(Format.id, Format, code=format_code)
-    return id
+    return _load_from_cache(
+        format_code,
+        __format_id_by_code,
+        lambda code: _get_id_create_when_necessary(Format.id, Format, code=code)
+    )
 
 
-def get_category_id(cat_name):
-    id = _get_id_create_when_necessary(Category.id, Category, name=cat_name)
-    return id
+def get_category_ids(cat_names):
+    return [_load_from_cache(
+        cat_name,
+        __category_id_by_name,
+        lambda name: _get_id_create_when_necessary(Category.id, Category, name=name)
+    ) for cat_name in cat_names]
 
 
 def _populate_dictionary_tables():

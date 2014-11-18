@@ -4,9 +4,8 @@ import itertools
 from pyquery import PyQuery as pq
 
 from api.converter import dict_to_slideshow
-from db.dictionary_tables import cached_category_ids
 from db.model import Related, User, Following, SlideshowHasCategory
-from db.persistence import save_all_and_commit, is_user_processed
+from db.persistence import save_all_and_commit, is_user_processed, get_category_ids
 from api.slideshare_api import Pyslideshare
 from downloader.config import config_my as config
 from downloader.util.logger import log
@@ -33,7 +32,7 @@ def scrap_categories_link(d, ss):
     # but 3from page src: <meta content="Small Business &amp; Entrepreneurship" class="fb_og_meta" property="slideshare:category" name="slideshow_category"> - single category - WTF ?!
     category_names = [elem.text for elem in d('div.categories-container > a')]
     categories_link = [SlideshowHasCategory(ssid=ss.id, category_id=cat_id)
-                       for cat_id in cached_category_ids(category_names)]
+                       for cat_id in get_category_ids(category_names)]
     log.info("\tcategory IDs: %s" % str([cat_link.category_id for cat_link in categories_link]))
     return categories_link
 

@@ -1,5 +1,5 @@
-from downloader.db.dictionary_tables import cached_language_id, cached_format_id
 from downloader.db.model import Slideshow
+from downloader.db.persistence import get_language_id, get_format_id
 
 
 def check_empty(ss_as_dict, property, type=str):
@@ -18,10 +18,10 @@ def dict_to_slideshow(ss_as_dict):
         url=check_empty(ss_as_dict, 'URL'),
         created_date=check_empty(ss_as_dict, 'Created'),
         updated_date=check_empty(ss_as_dict, 'Updated'),
-        language_id=cached_language_id(
+        language_id=get_language_id(
             check_empty(ss_as_dict, 'Language')
         ),
-        format_id=cached_format_id(
+        format_id=get_format_id(
             check_empty(ss_as_dict, 'Format')
         ),
         type_code=check_empty(ss_as_dict, 'SlideshowType', int),
