@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from downloader.config import config_my as config
 
-from downloader.db.model import Type, Category, Base, User
+from downloader.db.model import Type, Category, Base, User, Country
 from downloader.util.logger import log
 
 
@@ -40,6 +40,7 @@ def _get_id_create_when_necessary(query_select, entity, **query_filter):
 
 __category_id_by_name = {}
 __type_id_by_name = {}
+__country_id_by_name = {}
 
 
 def _load_from_cache(key, cache, query_method):
@@ -56,6 +57,14 @@ def get_type_id(type_name):
         type_name,
         __type_id_by_name,
         lambda name: _get_id_create_when_necessary(Type.id, Type, name=type_name)
+    )
+
+
+def get_country_id(country_name):
+    return _load_from_cache(
+        country_name,
+        __country_id_by_name,
+        lambda name: _get_id_create_when_necessary(Country.id, Country, name=country_name)
     )
 
 
