@@ -66,6 +66,11 @@ def _populate_dictionary_tables():
 DBSession = sessionmaker(bind=__engine)
 __session = DBSession()
 
-if __name__ == '__main__':
+
+def __main():
     Base.metadata.create_all(__engine)
     _populate_dictionary_tables()
+
+
+if __name__ == '__main__':
+    __main()

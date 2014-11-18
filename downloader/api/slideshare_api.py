@@ -1,11 +1,11 @@
 import urllib
 import time
 from hashlib import sha1
-import sys
 import urllib2
 
 from xml2dict import fromstring
 from downloader.config import config_my as config
+from downloader.util.logger import log
 
 
 class Pyslideshare:
@@ -46,7 +46,7 @@ class Pyslideshare:
     @staticmethod
     def _check_error(json):
         if json and hasattr(json, 'SlideShareServiceError'):
-            print >> sys.stderr, 'Slideshare returned the following error - %s' % json.SlideShareServiceError.Message
+            log.error('Slideshare returned the following error - %s' % json.SlideShareServiceError.Message)
             return None
         return json
 
@@ -60,5 +60,7 @@ class Pyslideshare:
         as_dict = fromstring(data)
         return self._check_error(as_dict)
 
-    def get_slideshow_by_id(self, slideshow_id):
-        return self._make_call('get_slideshow', slideshow_id=str(slideshow_id), detailed=1)['Slideshow']
+    def get_slideshow_by_id(self, ssid):
+        slideshow = self._make_call('get_slideshow', slideshow_id=str(ssid), detailed=1)['Slideshow']
+        log.debug("\tAPI get_slideshow call for ssid=%s - SUCCESS" % ssid)
+        return slideshow
