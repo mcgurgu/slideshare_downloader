@@ -87,7 +87,7 @@ def _populate_dictionary_tables():
 def pq_to_slideshow(slideshow_page_as_pq):
     path_with_ssid = slideshow_page_as_pq('meta.twitter_player')[0].attrib['value']
     return Slideshow(
-        id = urlparse(path_with_ssid).path.split('/')[-1],
+        id = int(urlparse(path_with_ssid).path.split('/')[-1]),
         title = slideshow_page_as_pq('title')[0].text,
         description = slideshow_page_as_pq('meta[name=description]')[0].attrib['content'],
         url = slideshow_page_as_pq.base_url,

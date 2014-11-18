@@ -40,9 +40,11 @@ def scrap_categories_link(d, ss):
 def scrap_related(d, relating_ssid):
     elems = d('ul#relatedList li.j-related-item a')
     related_ids = set(e.attrib['data-ssid'] for e in elems)  # set, since page often recommends duplicates
-    return [Related(
-        related_ssid=ssid,
-        relating_ssid=relating_ssid) for ssid in related_ids]
+    related_urls = set("http://slideshare.net%s" % e.attrib['href'] for e in elems)    
+    relations = [Related(
+            related_ssid=ssid,
+            relating_ssid=relating_ssid) for ssid in related_ids]
+    return relations, related_urls
 
 
 def make_user(username, full_name):
@@ -135,34 +137,31 @@ def scrap_and_save_slideshow(url, api):
     process_user(ss.username)
     scrap_remaining_sideshow_info(d, ss)
     categories_link = scrap_categories_link(d, ss)
-    related = scrap_related(d, ss.id)
-    related_ssids = [r.related_ssid for r in related]
-    log.info("\trelated IDs: %s" % str(related_ssids))
-    save_all_and_commit(related + [ss] + categories_link)
-    log.info("saving Slideshow(ssid=%s) SUCCESS" % url)
-    return related_ssids
+    related_relations, related_urls = scrap_related(d, ss.id)
+    log.info("\trelated IDs cnt: %s" % len(related_urls))
+    save_all_and_commit(related_relations + [ss]) #+ categories_link)
+    log.info("saving Slideshow(url=%s) SUCCESS" % url)
+    return related_urls
 
 
 def _main():
-    ssid = sys.argv[1] if len(sys.argv) > 1 else config.init_ssid
+    url = sys.argv[1] if len(sys.argv) > 1 else config.init_url
 
     api = Pyslideshare()
 
     scraped = set()
     nonscraped = set()
-    # nonscraped.add(ssid)
-    url = "http://www.slideshare.net/al3x/why-scala-for-web-20"
-    scrap_and_save_slideshow(url,api)
+    nonscraped.add(url)
 
     while len(nonscraped) > 0:
-        ssid = nonscraped.pop()
+        url = nonscraped.pop()
         related_ssids = []
         try:
-            related_ssids = scrap_and_save_slideshow(ssid, api)
+            related_url = scrap_and_save_slideshow(url, api)
         except Exception as e:
             log.exception('Caught exception %s while processing %s' % (e.message, ssid))
-        scraped.add(ssid)
-        nonscraped.update(set(related_ssids))
+        scraped.add(url)
+        nonscraped.update(set(related_url))
         nonscraped.difference_update(scraped)
 
 
