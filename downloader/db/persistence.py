@@ -6,7 +6,7 @@ from downloader.config import config_my as config
 from downloader.db.model import Format, Type, Category, Base, User, Language
 
 
-__engine = create_engine('sqlite:///' + config.db_filename + '.db')
+__engine = create_engine('sqlite:///' + config.db_filename)
 
 __session = None
 
@@ -45,6 +45,7 @@ def get_category_id(cat_name):
 
 
 def _populate_dictionary_tables():
+    # TODO(vucalur): these are not all!
     formats = [Format(code='ppt'),
                Format(code='pdf'),
                Format(code='pps'),

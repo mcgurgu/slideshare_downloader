@@ -26,7 +26,10 @@ def scrap_remaining_sideshow_info(d, ss):
 
 
 def scrap_categories_link(d, ss):
-    category_names = [elem.text for elem in d('div.info-generic li.category > a')]
+    # total fuck-up with categories:
+    # http://www.slideshare.net/Bufferapp/workspaces-of-buffer-2 - "More in:" - 2 categories
+    # but 3from page src: <meta content="Small Business &amp; Entrepreneurship" class="fb_og_meta" property="slideshare:category" name="slideshow_category"> - single category - WTF ?!
+    category_names = [elem.text for elem in d('div.categories-container > a')]
     categories_link = [SlideshowHasCategory(ssid=ss.id, category_id=cat_id)
                        for cat_id in cached_category_ids(category_names)]
     return categories_link
@@ -134,10 +137,9 @@ def scrap_and_save_slideshow(ssid, api):
     scrap_remaining_sideshow_info(d, ss)
     log.debug("\tscraping slideshow info SUCCESS")
     categories_link = scrap_categories_link(d, ss)
-    log.debug("\tscraping categories SUCCESS")
+    log.debug("\tcategory IDs: %s" % str([cat_link.category_id for cat_link in categories_link]))
     related = scrap_related(d, ss.id)
     related_ssids = [r.related_ssid for r in related]
-    log.debug("\tscraping related slideshows SUCCESS")
     log.debug("\trelated IDs: %s" % str(related_ssids))
     save_all_and_commit(related + [ss] + categories_link)
     log.info("downloading slideshow, ssid=%s SUCCESS" % ssid)

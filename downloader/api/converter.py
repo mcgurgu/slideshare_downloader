@@ -11,6 +11,7 @@ def check_empty(ss_as_dict, property, type=str):
 
 def dict_to_slideshow(ss_as_dict):
     return Slideshow(
+        # TODO(vucalur): UNICODE!!!!
         id=check_empty(ss_as_dict, 'ID', int),
         title=check_empty(ss_as_dict, 'Title'),
         description=check_empty(ss_as_dict, 'Description'),
