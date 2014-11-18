@@ -62,5 +62,5 @@ class Pyslideshare:
 
     def get_slideshow_by_id(self, ssid):
         slideshow = self._make_call('get_slideshow', slideshow_id=str(ssid), detailed=1)['Slideshow']
-        log.debug("\tAPI get_slideshow call for ssid=%s - SUCCESS" % ssid)
+        log.debug("\tAPI: get_slideshow call for ssid=%s - SUCCESS" % ssid)
         return slideshow

@@ -24,6 +24,8 @@ def scrap_remaining_sideshow_info(d, ss):
     ss.embeds_count = human_readable_str2int(ss_stats[3].text)
     ss.downloads_count = human_readable_str2int(ss_stats[5].text)
 
+    log.debug("\tscraping slideshow info SUCCESS")
+
 
 def scrap_categories_link(d, ss):
     # total fuck-up with categories:
@@ -32,14 +34,13 @@ def scrap_categories_link(d, ss):
     category_names = [elem.text for elem in d('div.categories-container > a')]
     categories_link = [SlideshowHasCategory(ssid=ss.id, category_id=cat_id)
                        for cat_id in cached_category_ids(category_names)]
+    log.info("\tcategory IDs: %s" % str([cat_link.category_id for cat_link in categories_link]))
     return categories_link
 
 
-# TODO(vucalur): rename : doesn't scrap Slideshow objects, but RelatedSlideshow objects
-# TODO(vucalur): is this even working ?? already had an issue with duplicates in "related" box. TODO: migrate to API
 def scrap_related(d, relating_ssid):
     elems = d('ul#relatedList li.j-related-item a')
-    related_ids = set(e.attrib['data-ssid'] for e in elems)  # set, since it may return duplicates
+    related_ids = set(e.attrib['data-ssid'] for e in elems)  # set, since page often recommends duplicates
     return [Related(
         related_ssid=ssid,
         relating_ssid=relating_ssid) for ssid in related_ids]
@@ -82,7 +83,7 @@ def scrap_followers(username):
     pages = calculate_followers_or_following_pages(followers_page)
     entities = []
     for p in range(1, pages + 1):
-        log.debug("\t\t\tscraping followers, page: %d/%d" % (p, pages))
+        log.info("\t\t\tscraping followers, page: %d/%d" % (p, pages))
         entities.extend(do_scrap_followers(username, p))
     return entities
 
@@ -108,41 +109,39 @@ def scrap_following(username):
     pages = calculate_followers_or_following_pages(following_page)
     entities = []
     for p in range(1, pages + 1):
-        log.debug("\t\t\tscraping following, page: %d/%d" % (p, pages))
+        log.info("\t\t\tscraping following, page: %d/%d" % (p, pages))
         entities.extend(do_scrap_following(username, p))
     return entities
 
 
 def scrap_username_following_and_followers(username):
     save_all_and_commit(scrap_followers(username))
-    log.debug("\t\tdownloading followers SUCCESS")
+    log.debug("\t\tsaving followers SUCCESS")
     save_all_and_commit(scrap_following(username))
-    log.debug("\t\tdownloading following SUCCESS")
+    log.debug("\t\tsaving following SUCCESS")
 
 
 def process_user(username):
     if not is_user_processed(username):
-        log.info("\tprocessing user, username=%s" % username)
+        log.info("\tprocessing User(username=%s)" % username)
         save_all_and_commit([User(username=username)])
         scrap_username_following_and_followers(username)
-        log.info("\tprocessing user, username=%s SUCCESS" % username)
+        log.info("\tprocessing User(username=%s) SUCCESS" % username)
 
 
 def scrap_and_save_slideshow(ssid, api):
-    log.info("downloading slideshow, ssid=%s" % ssid)
+    log.info("downloading Slideshow(ssid=%s)" % ssid)
     ss_as_dict = api.get_slideshow_by_id(ssid)
     ss = dict_to_slideshow(ss_as_dict)
     process_user(ss.username)
     d = pq(url=ss.url)
     scrap_remaining_sideshow_info(d, ss)
-    log.debug("\tscraping slideshow info SUCCESS")
     categories_link = scrap_categories_link(d, ss)
-    log.debug("\tcategory IDs: %s" % str([cat_link.category_id for cat_link in categories_link]))
     related = scrap_related(d, ss.id)
     related_ssids = [r.related_ssid for r in related]
-    log.debug("\trelated IDs: %s" % str(related_ssids))
+    log.info("\trelated IDs: %s" % str(related_ssids))
     save_all_and_commit(related + [ss] + categories_link)
-    log.info("downloading slideshow, ssid=%s SUCCESS" % ssid)
+    log.info("saving Slideshow(ssid=%s) SUCCESS" % ssid)
     return related_ssids
 
 

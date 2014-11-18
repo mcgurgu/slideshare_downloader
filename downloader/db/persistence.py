@@ -4,6 +4,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from downloader.config import config_my as config
 from downloader.db.model import Format, Type, Category, Base, User, Language
+from downloader.util.logger import log
 
 
 __engine = create_engine('sqlite:///' + config.db_filename)
@@ -21,53 +22,43 @@ def is_user_processed(username):
     return query.all() != []
 
 
-def get_or_create_language_id(lang_code):
-    query = __session.query(Language.id).filter_by(code=lang_code)
+def _get_id_create_when_necessary(query_select, entity, **query_filter):
+    query = __session.query(query_select).filter_by(**query_filter)
     try:
-        return query.one()[0]
+        id_ = query.one()[0]
+        log.debug("DB: found id=%d for %s(%s)" % (id_, entity.__name__, str(query_filter)))
+        return id_
     except NoResultFound:
-        new_lang = Language(code=lang_code)
-        __session.add(new_lang)
+        log.debug("DB: %s(%s) not found" % (entity, str(query_filter)))
+        new_obj = entity(**query_filter)
+        __session.add(new_obj)
         __session.commit()
-        return new_lang.id
+        log.debug("DB: %s(id=%d, %s) successfully stored" % (entity.__name__, new_obj.id, str(query_filter)))
+        return new_obj.id
 
 
-# TODO(vucalur): refactor: DRY 1.a
+def get_or_create_language_id(lang_code):
+    id = _get_id_create_when_necessary(Language.id, Language, code=lang_code)
+    return id
+
+
 def get_format_id(format_code):
-    query = __session.query(Format.id).filter_by(code=format_code)
-    return query.one()[0]
+    id = _get_id_create_when_necessary(Format.id, Format, code=format_code)
+    return id
 
 
-# TODO(vucalur): refactor: DRY 1.b
 def get_category_id(cat_name):
-    query = __session.query(Category.id).filter_by(name=cat_name)
-    return query.one()[0]
+    id = _get_id_create_when_necessary(Category.id, Category, name=cat_name)
+    return id
 
 
 def _populate_dictionary_tables():
-    # TODO(vucalur): these are not all!
-    formats = [Format(code='ppt'),
-               Format(code='pdf'),
-               Format(code='pps'),
-               Format(code='odp'),
-               Format(code='doc'),
-               Format(code='pot'),
-               Format(code='txt'),
-               Format(code='rdf')]
     types = [Type(code=0, name='presentation'),
              Type(code=1, name='document'),
              Type(code=2, name='portfolio'),
              Type(code=3, name='video')]
-    default_category_names = ['Art & Photos', 'Automotive', 'Business', 'Career', 'Data & Analytics', 'Design', 'Devices & Hardware',
-                              'Economy & Finance', 'Education', 'Engineering', 'Entertainment & Humor', 'Environment', 'Food',
-                              'Government & Nonprofit', 'Health & Medicine', 'Healthcare', 'Internet', 'Investor Relations',
-                              'Law', 'Leadership & Management', 'Lifestyle', 'Marketing', 'Mobile', 'News & Politics', 'Presentations & Public Speaking',
-                              'Real Estate', 'Recruiting & HR', 'Retail', 'Sales', 'Science', 'Self Improvement', 'Services',
-                              'Small Business & Entrepreneurship', 'Social Media', 'Software', 'Spiritual', 'Sports', 'Technology', 'Travel']
-    categories = [Category(name=cat) for cat in default_category_names]
 
-    data = formats + types + categories
-    save_all_and_commit(data)
+    save_all_and_commit(types)
 
 
 DBSession = sessionmaker(bind=__engine)
