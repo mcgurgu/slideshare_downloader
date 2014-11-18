@@ -11,23 +11,20 @@ DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S %Z'
 
 class Slideshow(Base):
     __tablename__ = 'slideshow'
-    id = Column(Integer, primary_key=True)
+    ssid = Column(Integer, primary_key=True)
+    # TODO(vucalur): UNICODE support !
     title = Column(String, nullable=False)
     description = Column(String)
     url = Column(String, nullable=False)
     created_date = Column(DateTime, nullable=False)
     updated_date = Column(DateTime)
-    language_id = Column(Integer, ForeignKey('language.id'))
-    format_id = Column(Integer, ForeignKey('format.id'))
-    type_code = Column(Integer, ForeignKey('type.code'))
+    type_id = Column(Integer, ForeignKey('type.id'))
     username = Column(String, ForeignKey('user.username'))
 
     downloads_count = Column(Integer, nullable=False)
     views_on_slideshare_count = Column(Integer, nullable=False)
     views_from_embeds_count = Column(Integer, nullable=False)
     embeds_count = Column(Integer, nullable=False)
-    comments_count = Column(Integer, nullable=False)
-    likes_count = Column(Integer, nullable=False)
 
     categories = relationship('Category', secondary='slideshow_has_category')
     tags = relationship('Tag', secondary='slideshow_has_tag')
@@ -39,23 +36,9 @@ class Slideshow(Base):
             super(Slideshow, self).__setattr__(key, value)
 
 
-class Language(Base):
-    __tablename__ = 'language'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    code = Column(String, unique=True, nullable=False)
-    slideshows = relationship('Slideshow', backref="language")
-
-
-class Format(Base):
-    __tablename__ = 'format'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    code = Column(String, unique=True, nullable=False)
-    slideshows = relationship('Slideshow', backref="format")
-
-
 class Type(Base):
     __tablename__ = 'type'
-    code = Column(Integer, primary_key=True)  # leaving off code (API) as PK
+    id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     slideshows = relationship('Slideshow', backref="type")
 
@@ -87,7 +70,7 @@ class Category(Base):
 
 class SlideshowHasCategory(Base):
     __tablename__ = 'slideshow_has_category'
-    ssid = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
+    ssid = Column(Integer, ForeignKey('slideshow.ssid'), primary_key=True)
     category_id = Column(Integer, ForeignKey('category.id'), primary_key=True)
 
 
@@ -100,7 +83,7 @@ class Tag(Base):
 
 class SlideshowHasTag(Base):
     __tablename__ = 'slideshow_has_tag'
-    ssid = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
+    ssid = Column(Integer, ForeignKey('slideshow.ssid'), primary_key=True)
     tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
 
 
@@ -114,27 +97,26 @@ class Following(Base):
 
 class Related(Base):
     __tablename__ = 'related'
-    related_ssid = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
-    relating_ssid = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
-    related_ss = relationship('Slideshow', backref='relating_ss', primaryjoin=(Slideshow.id == related_ssid))
-    relating_ss = relationship('Slideshow', backref='related_ss', primaryjoin=(Slideshow.id == relating_ssid))
+    related_ssid = Column(Integer, ForeignKey('slideshow.ssid'), primary_key=True)
+    relating_ssid = Column(Integer, ForeignKey('slideshow.ssid'), primary_key=True)
+    related_ss = relationship('Slideshow', backref='relating_ss', primaryjoin=(Slideshow.ssid == related_ssid))
+    relating_ss = relationship('Slideshow', backref='related_ss', primaryjoin=(Slideshow.ssid == relating_ssid))
 
 
 class Like(Base):
     __tablename__ = 'like'
     username = Column(String, ForeignKey('user.username'), primary_key=True)
-    ssid = Column(Integer, ForeignKey('slideshow.id'), primary_key=True)
+    ssid = Column(Integer, ForeignKey('slideshow.ssid'), primary_key=True)
     user = relationship('User', backref='liked_slideshows', primaryjoin=(User.username == username))
-    ss = relationship('Slideshow', backref='liked_by', primaryjoin=(Slideshow.id == ssid))
+    ss = relationship('Slideshow', backref='liked_by', primaryjoin=(Slideshow.ssid == ssid))
 
 
 class Comment(Base):
     __tablename__ = 'comment'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    created_date = Column(DateTime, nullable=False)
     text = Column(String)
     username = Column(String, ForeignKey('user.username'), nullable=False)
-    ssid = Column(Integer, ForeignKey('slideshow.id'), nullable=False)
+    ssid = Column(Integer, ForeignKey('slideshow.ssid'), nullable=False)
     user = relationship('User', backref='comments', primaryjoin=(User.username == username))
-    ss = relationship('Slideshow', backref='comments', primaryjoin=(Slideshow.id == ssid))
+    ss = relationship('Slideshow', backref='comments', primaryjoin=(Slideshow.ssid == ssid))
 
