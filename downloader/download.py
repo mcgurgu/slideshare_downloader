@@ -121,6 +121,13 @@ def scrap_username_following_and_followers(username):
     save_all_and_commit(scrap_following(username))
     log.debug("\t\tsaving following SUCCESS")
 
+def scrap_user(username):
+    user_page = pq(url="http://slideshare.net/%s/" % username)
+    full_name = user_page('h1[itemprop="name"]')[0].text
+    city = pq('span[itemprop="addressLocality"]')[0].text
+    country = pq('span[itemprop="addressLocality"]')[0].text
+    url = pq('a[itemprop="url"]')[0].text
+
 
 def process_user(username):
     if not is_user_processed(username):
