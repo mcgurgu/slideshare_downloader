@@ -59,9 +59,7 @@ def scrap_followers(username):
         followed_username = followed_html.find('a').attrib['href'][1:]
         followed_fullname = followed_html.find('a').find('span').text
         following = make_following(username, followed_username)
-        if is_user_processed(followed_username):
-            return [following]
-        else:
+        if not is_user_processed(followed_username):
             return [following, make_user(followed_username, followed_fullname)]
 
     def do_scrap_followers(username, page):
@@ -69,6 +67,7 @@ def scrap_followers(username):
         followers_profiles = [x for x in followers_page('ul.userList div.userMeta_profile')]
         relations = [handle_followers(username, followerElement)
                      for followerElement in followers_profiles]
+        relations = filter(None, relations)
         return list(itertools.chain.from_iterable(relations))
 
     followers_page = pq(url="http://slideshare.net/%s/followers" % username)
@@ -85,9 +84,7 @@ def scrap_following(username):
         following_username = following_html.find('a').attrib['href'][1:]
         following_fullname = following_html.find('a').find('span').text
         following = make_following(following_username, username)
-        if is_user_processed(following_username):
-            return [following]
-        else:
+        if not is_user_processed(following_username):
             return [following, make_user(following_username, following_fullname)]
 
     def do_scrap_following(username, page):
@@ -95,8 +92,9 @@ def scrap_following(username):
         following_profiles = [x for x in following_page('ul.userList div.userMeta_profile')]
         relations = [handle_following(username, followingElement)
                      for followingElement in following_profiles]
+        relations = filter(None, relations)
         return list(itertools.chain.from_iterable(relations))
-
+        
     following_page = pq(url="http://slideshare.net/%s/following" % username)
     pages = calculate_followers_or_following_pages(following_page)
     entities = []
