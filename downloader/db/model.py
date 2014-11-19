@@ -108,8 +108,9 @@ class Related(Base):
 
 class Like(Base):
     __tablename__ = 'like'
-    username = Column(String, ForeignKey('user.username'), primary_key=True)
-    ssid = Column(Integer, ForeignKey('slideshow.ssid'), primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String, ForeignKey('user.username'), nullable=False)
+    ssid = Column(Integer, ForeignKey('slideshow.ssid'), nullable=False)
     user = relationship('User', backref='liked_slideshows', primaryjoin=(User.username == username))
     ss = relationship('Slideshow', backref='liked_by', primaryjoin=(Slideshow.ssid == ssid))
 
