@@ -118,7 +118,7 @@ def scrap_user(username):
     city = user_page('span[itemprop="addressLocality"]').text()
     country_name = user_page('span[itemprop="addressCountry"]').text()
     country_id = get_country_id(country_name)
-    url = user_page('a[itemprop="url"]')[0].text
+    url = user_page('a[itemprop="url"]').text()
     about = user_page('span[itemprop="description"]').text()
     works_for = user_page('span[itemprop="worksFor"]').text()
 
