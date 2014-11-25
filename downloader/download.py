@@ -218,24 +218,38 @@ def process_slideshow(url):
     log.info("saving Slideshow(url=%s) SUCCESS" % url)
     return related_urls
 
+def urls_from_file(filename):
+    if os.path.isfile(filename):
+        with open(filename, 'r') as f:
+            return set(list(f))
+    return set()
+
+def update_scraped_file(url):
+    with open(scraped_file, "a") as f:
+            f.write("%s\n" % url.strip())
+
+def update_non_scraped_file(nonscraped):
+    with open(nonscraped_file, "w") as f:
+            [f.write("%s\n" % n.strip()) for n in nonscraped]
 
 def _main():
-    url = sys.argv[1] if len(sys.argv) > 1 else config.init_url
-
-    scraped = set()
-    nonscraped = set()
-    nonscraped.add(url)
+    scraped, nonscraped = urls_from_file(scraped_file), urls_from_file(nonscraped_file)
+    if not nonscraped:
+        url = sys.argv[1] if len(sys.argv) > 1 else config.init_url
+        nonscraped.add(url)
 
     while len(nonscraped) > 0:
         url = nonscraped.pop()
+        update_scraped_file(url)
         related_urls = []
         try:
             related_urls = process_slideshow(url)
         except Exception as e:
-            log.exception('Caught exception %s while processing Slideshow(url=%s)' % (e.message, url))
+            log.exception('Caught exception %s while processing Slideshow(url=%s)' % (e.message, url))     
         scraped.add(url)
         nonscraped.update(set(related_urls))
         nonscraped.difference_update(scraped)
+        update_non_scraped_file(nonscraped)
 
 
 if __name__ == '__main__':
