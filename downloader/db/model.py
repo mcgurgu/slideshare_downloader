@@ -18,7 +18,7 @@ class Slideshow(Base):
     url = Column(String, nullable=False)
     created_date = Column(DateTime, nullable=False)
     updated_date = Column(DateTime)
-    type_id = Column(Integer, ForeignKey('type.id'))
+    type_id = Column(Integer, ForeignKey('type.id'), nullable=False)
     username = Column(String, ForeignKey('user.username'))
 
     downloads_count = Column(Integer, nullable=False)
@@ -27,6 +27,7 @@ class Slideshow(Base):
     embeds_count = Column(Integer, nullable=False)
 
     categories = relationship('Category', secondary='slideshow_has_category')
+    # TODO(vucalur): Can we obtain these ? If not - remove table
     tags = relationship('Tag', secondary='slideshow_has_tag')
 
     def __setattr__(self, key, value):
@@ -39,7 +40,7 @@ class Slideshow(Base):
 class Type(Base):
     __tablename__ = 'type'
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
+    name = Column(String, nullable=False, unique=True)
     slideshows = relationship('Slideshow', backref="type")
 
 
@@ -51,11 +52,17 @@ class User(Base):
     organization = Column(String)
     full_name = Column(String)
     description = Column(String)
-    joined_date = Column(DateTime)
+    joined_date = Column(DateTime, nullable=False)
     url = Column(String)
     about = Column(String)
     works_for = Column(String)
     slideshows = relationship('Slideshow', backref="user")
+
+    def __setattr__(self, key, value):
+        if key == 'joined_date':
+            super(User, self).__setattr__(key, datetime.strptime(value, DATETIME_FORMAT))
+        else:
+            super(User, self).__setattr__(key, value)
 
 
 class Country(Base):

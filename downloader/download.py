@@ -26,7 +26,7 @@ def human_readable_str2int(str_):
 
 
 def scrap_categories_link(d, ss):
-    # total fuck-up with categories:
+    # total mess with categories:
     # http://www.slideshare.net/Bufferapp/workspaces-of-buffer-2 - "More in:" - 2 categories
     # but 3from page src: <meta content="Small Business &amp; Entrepreneurship" class="fb_og_meta" property="slideshare:category" name="slideshow_category"> - single category - WTF ?!
     category_names = [elem.text for elem in d('div.categories-container > a')]
@@ -46,10 +46,6 @@ def scrap_related(d, relating_ssid):
     return related_objs, related_urls
 
 
-def make_user(username, full_name):
-    return User(username=username, full_name=full_name)
-
-
 def make_following(followed_username, following_username):
     return Following(followed_username=followed_username,
         following_username=following_username)
@@ -65,10 +61,9 @@ def calculate_followers_or_following_pages(page):
 def scrap_followers(username):
     def handle_followers(username, followed_html):
         followed_username = followed_html.find('a').attrib['href'][1:]
-        followed_fullname = followed_html.find('a').find('span').text
         following = make_following(username, followed_username)
         if not is_user_processed(followed_username):
-            return [following, make_user(followed_username, followed_fullname)]
+            return [following, scrap_user(followed_username)]
 
     def do_scrap_followers(username, page):
         followers_page = pq(url="http://slideshare.net/%s/followers/%d" % (username, page))
@@ -78,8 +73,8 @@ def scrap_followers(username):
         relations = filter(None, relations)
         return list(itertools.chain.from_iterable(relations))
 
-    followers_page = pq(url="http://slideshare.net/%s/followers" % username)
-    pages = calculate_followers_or_following_pages(followers_page)
+    followers_first_page = pq(url="http://slideshare.net/%s/followers" % username)
+    pages = calculate_followers_or_following_pages(followers_first_page)
     entities = []
     for p in range(1, pages + 1):
         log.info("\t\t\tscraping followers, page: %d/%d" % (p, pages))
@@ -90,10 +85,9 @@ def scrap_followers(username):
 def scrap_following(username):
     def handle_following(username, following_html):
         following_username = following_html.find('a').attrib['href'][1:]
-        following_fullname = following_html.find('a').find('span').text
         following = make_following(following_username, username)
         if not is_user_processed(following_username):
-            return [following, make_user(following_username, following_fullname)]
+            return [following, scrap_user(following_username)]
 
     def do_scrap_following(username, page):
         following_page = pq(url="http://slideshare.net/%s/following/%d" % (username, page))
@@ -102,9 +96,9 @@ def scrap_following(username):
                      for followingElement in following_profiles]
         relations = filter(None, relations)
         return list(itertools.chain.from_iterable(relations))
-        
-    following_page = pq(url="http://slideshare.net/%s/following" % username)
-    pages = calculate_followers_or_following_pages(following_page)
+
+    following_first_page = pq(url="http://slideshare.net/%s/following" % username)
+    pages = calculate_followers_or_following_pages(following_first_page)
     entities = []
     for p in range(1, pages + 1):
         log.info("\t\t\tscraping following, page: %d/%d" % (p, pages))
@@ -121,21 +115,21 @@ def scrap_username_following_and_followers(username):
 
 def scrap_user(username):
     user_page = pq(url="http://slideshare.net/%s/" % username)
-    # TODO(Szymon): [0].text --> .text(): removes IndexOutOfRange problem if no matches, creates problem if multiple elements match the selector
     full_name = user_page('h1[itemprop="name"]').text()
     city = user_page('span[itemprop="addressLocality"]').text()
-    country_name = user_page('span[itemprop="addressCountry"]').text()
-    country_id = get_country_id(country_name)
+    tmp_country_name = user_page('span[itemprop="addressCountry"]').text()
+    country_id = get_country_id(tmp_country_name) if tmp_country_name else None
+    joined_date = user_page('meta[property="slideshare:joined_on"]')[0].attrib['content']
     url = user_page('a[itemprop="url"]').text()
     about = user_page('span[itemprop="description"]').text()
     works_for = user_page('span[itemprop="worksFor"]').text()
 
-
     return User(
         username=username,
         full_name=full_name,
-        city=city,
         country_id=country_id,
+        city=city,
+        joined_date=joined_date,
         url=url,
         about=about,
         works_for=works_for
@@ -150,25 +144,25 @@ def process_user(username):
         log.info("\tprocessing User(username=%s) SUCCESS" % username)
 
 
-def pq_to_slideshow(pq_page):
-    path_with_ssid = pq_page('meta.twitter_player')[0].attrib['value']
-    ss_stats = pq_page('dl.statistics > dd')
-    type_name = pq_page('meta[name=og_type]')[0].attrib['content'].split(':')[1]
+def scrap_slideshow(ss_page):
+    path_with_ssid = ss_page('meta.twitter_player')[0].attrib['value']
+    ss_stats = ss_page('dl.statistics > dd')
+    type_name = ss_page('meta[name=og_type]')[0].attrib['content'].split(':')[1]
 
     return Slideshow(
         ssid=int(urlparse(path_with_ssid).path.split('/')[-1]),
-        title=pq_page('title')[0].text,
-        description=pq_page('meta[name=description]')[0].attrib['content'],
-        url=pq_page.base_url,
-        created_date=pq_page('meta[name=slideshow_created_at]')[0].attrib['content'],
-        updated_date=pq_page('meta[name=slideshow_updated_at]')[0].attrib['content'],
+        title=ss_page('title')[0].text,
+        description=ss_page('meta[name=description]')[0].attrib['content'],
+        url=ss_page.base_url,
+        created_date=ss_page('meta[name=slideshow_created_at]')[0].attrib['content'],
+        updated_date=ss_page('meta[name=slideshow_updated_at]')[0].attrib['content'],
         type_id=get_type_id(type_name),
-        username=pq_page('meta[name=slideshow_author]')[0].attrib['content'].split('/')[-1],
+        username=ss_page('meta[name=slideshow_author]')[0].attrib['content'].split('/')[-1],
         views_on_slideshare_count=human_readable_str2int(ss_stats[1].text),
         views_from_embeds_count=human_readable_str2int(ss_stats[2].text),
 
-        downloads_count=int(pq_page('meta[name=slideshow_download_count]')[0].attrib['content']),
-        embeds_count=int(pq_page('meta[name=slideshow_embed_count]')[0].attrib['content'])
+        downloads_count=int(ss_page('meta[name=slideshow_download_count]')[0].attrib['content']),
+        embeds_count=int(ss_page('meta[name=slideshow_embed_count]')[0].attrib['content'])
     )
 
 
@@ -214,11 +208,11 @@ def get_likes(ssid):
 
 def process_slideshow(url):
     log.info("processing Slideshow(url=%s)" % url)
-    d = pq(url=url)
-    ss = pq_to_slideshow(d)
+    ss_page = pq(url=url)
+    ss = scrap_slideshow(ss_page)
     process_user(ss.username)
-    categories_link = scrap_categories_link(d, ss)
-    related_objs, related_urls = scrap_related(d, ss.ssid)
+    categories_link = scrap_categories_link(ss_page, ss)
+    related_objs, related_urls = scrap_related(ss_page, ss.ssid)
     log.info("\tRelated count: %s" % len(related_urls))
     comments = get_comments(ss.ssid)
     likes = get_likes(ss.ssid)

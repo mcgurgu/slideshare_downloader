@@ -1,10 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-
 from sqlalchemy.orm import sessionmaker
 
 from downloader.config import config_my as config
-
 from downloader.db.model import Type, Category, Base, User, Country
 from downloader.util.logger import log
 
@@ -21,8 +19,6 @@ def save_all_and_commit(data):
     except SQLAlchemyError as e:
         log.exception('Caught SQLAlchemyError %s while committing. Rolling back' % (e.message))
         __session.rollback()
-
-       
 
 
 def is_user_processed(username):
@@ -44,10 +40,10 @@ def _get_id_create_when_necessary(query_select, entity, **query_filter):
         log.debug("DB: %s(id=%d, %s) successfully stored" % (entity.__name__, new_obj.id, str(query_filter)))
         return new_obj.id
 
-
-__category_id_by_name = {}
-__type_id_by_name = {}
-__country_id_by_name = {}
+# TODO(vucalur): refactor: DRY. Cache method/class wrapper ?
+__category_id_by_name = {'': None}
+__type_id_by_name = {'': None}
+__country_id_by_name = {'': None}
 
 
 def _load_from_cache(key, cache, query_method):
