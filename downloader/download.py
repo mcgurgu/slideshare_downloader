@@ -59,16 +59,16 @@ def calculate_followers_or_following_pages(page):
 
 
 def scrap_followers(username):
-    def handle_followers(username, followed_html):
+    def handle_followers(followed_html):
         followed_username = followed_html.find('a').attrib['href'][1:]
         following = make_following(username, followed_username)
         if not is_user_processed(followed_username):
             return [following, scrap_user(followed_username)]
 
-    def do_scrap_followers(username, page):
+    def do_scrap_followers(page):
         followers_page = pq(url="http://slideshare.net/%s/followers/%d" % (username, page))
         followers_profiles = [x for x in followers_page('ul.userList div.userMeta_profile')]
-        relations = [handle_followers(username, followerElement)
+        relations = [handle_followers(followerElement)
                      for followerElement in followers_profiles]
         relations = filter(None, relations)
         return list(itertools.chain.from_iterable(relations))
@@ -78,21 +78,21 @@ def scrap_followers(username):
     entities = []
     for p in range(1, pages + 1):
         log.info("\t\t\tscraping followers, page: %d/%d" % (p, pages))
-        entities.extend(do_scrap_followers(username, p))
+        entities.extend(do_scrap_followers(p))
     return entities
 
 
 def scrap_following(username):
-    def handle_following(username, following_html):
+    def handle_following(following_html):
         following_username = following_html.find('a').attrib['href'][1:]
         following = make_following(following_username, username)
         if not is_user_processed(following_username):
             return [following, scrap_user(following_username)]
 
-    def do_scrap_following(username, page):
+    def do_scrap_following(page):
         following_page = pq(url="http://slideshare.net/%s/following/%d" % (username, page))
         following_profiles = [x for x in following_page('ul.userList div.userMeta_profile')]
-        relations = [handle_following(username, followingElement)
+        relations = [handle_following(followingElement)
                      for followingElement in following_profiles]
         relations = filter(None, relations)
         return list(itertools.chain.from_iterable(relations))
@@ -102,7 +102,7 @@ def scrap_following(username):
     entities = []
     for p in range(1, pages + 1):
         log.info("\t\t\tscraping following, page: %d/%d" % (p, pages))
-        entities.extend(do_scrap_following(username, p))
+        entities.extend(do_scrap_following(p))
     return entities
 
 
