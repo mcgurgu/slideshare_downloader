@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
 
 from sqlalchemy.orm import sessionmaker
 
@@ -14,8 +15,14 @@ __session = None
 
 
 def save_all_and_commit(data):
-    __session.add_all(data)
-    __session.commit()
+    try:
+        __session.add_all(data)
+        __session.commit()
+    except SQLAlchemyError as e:
+        log.exception('Caught SQLAlchemyError %s while committing. Rolling back' % (e.message))
+        __session.rollback()
+
+       
 
 
 def is_user_processed(username):
