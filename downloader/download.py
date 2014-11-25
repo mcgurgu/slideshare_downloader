@@ -1,6 +1,8 @@
 import json
 import sys
 import itertools
+import os
+import socket
 from urllib import urlopen
 from urlparse import urlparse
 
@@ -11,6 +13,12 @@ from db.persistence import save_all_and_commit, is_user_processed, get_category_
 from downloader.config import config_my as config
 from downloader.db.persistence import get_type_id, get_country_id
 from downloader.util.logger import log
+
+scraped_file = 'scraped.txt'
+nonscraped_file = 'nonscraped.txt'
+
+timeout = 19
+socket.setdefaulttimeout(timeout)
 
 
 def human_readable_str2int(str_):
