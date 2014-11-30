@@ -3,7 +3,9 @@ import sys
 import itertools
 import os
 import socket
+
 from urllib import urlopen
+
 from urlparse import urlparse
 
 from pyquery import PyQuery as pq
@@ -13,6 +15,7 @@ from db.persistence import save_all_and_commit, is_user_downloaded, get_category
 from downloader.config import config_my as config
 from downloader.db.persistence import get_type_id, get_country_id
 from downloader.util.logger import log
+
 
 scraped_file = 'scraped.txt'
 nonscraped_file = 'nonscraped.txt'
@@ -46,71 +49,49 @@ def scrap_related(d, relating_ssid):
     return related_objs, related_urls
 
 
-def make_following(followed_username, following_username):
-    return Following(followed_username=followed_username,
-        following_username=following_username)
+def download_follow_network(username):
+    def download_follow(url_suffix_, new_following):
+        def calculate_pages_count(page):
+            pagination_buttons = page('div.pagination li')
+            if pagination_buttons:
+                return int(pagination_buttons[-2].find('a').text)
+            return 1
 
+        def handle_profile(profile_element):
+            profile_username = profile_element.find('a').attrib['href'][1:]
+            if not is_user_downloaded(profile_username):
+                obj = new_following(profile_username)
+                return [obj, scrap_user(profile_username)]
 
-def calculate_followers_or_following_pages(page):
-    pagination_buttons = page('div.pagination li')
-    if pagination_buttons:
-        return int(pagination_buttons[-2].find('a').text)
-    return 1
+        def scrap_follow(page_i_):
+            page = pq(url="http://slideshare.net/%s/%s/%d" % (username, url_suffix_, page_i_))
+            user_profiles = [x for x in page('ul.userList div.userMeta_profile')]
+            objs = [handle_profile(profile_element)
+                    for profile_element in user_profiles]
+            objs = filter(None, objs)
+            return list(itertools.chain.from_iterable(objs))
 
+        follow_first_page = pq(url="http://slideshare.net/%s/%s" % (username, url_suffix_))
+        pages_count = calculate_pages_count(follow_first_page)
+        objs = []
+        for page_i in range(1, pages_count + 1):
+            log.info("\t\t\tscraping %s, page: %d/%d" % (url_suffix_, page_i, pages_count))
+            objs.extend(scrap_follow(page_i))
+        return objs
 
-def scrap_followers(username):
-    def handle_followers(followed_html):
-        followed_username = followed_html.find('a').attrib['href'][1:]
-        following = make_following(username, followed_username)
-        if not is_user_downloaded(followed_username):
-            return [following, scrap_user(followed_username)]
+    url_suffix = 'followers'
+    followers = download_follow(
+        url_suffix,
+        lambda follower_username: Following(followed_username=username, follower_username=follower_username))
+    save_all_and_commit(followers)
+    log.debug("\t\tsaving %s SUCCESS" % url_suffix)
 
-    def do_scrap_followers(page):
-        followers_page = pq(url="http://slideshare.net/%s/followers/%d" % (username, page))
-        followers_profiles = [x for x in followers_page('ul.userList div.userMeta_profile')]
-        relations = [handle_followers(followerElement)
-                     for followerElement in followers_profiles]
-        relations = filter(None, relations)
-        return list(itertools.chain.from_iterable(relations))
-
-    followers_first_page = pq(url="http://slideshare.net/%s/followers" % username)
-    pages = calculate_followers_or_following_pages(followers_first_page)
-    entities = []
-    for p in range(1, pages + 1):
-        log.info("\t\t\tscraping followers, page: %d/%d" % (p, pages))
-        entities.extend(do_scrap_followers(p))
-    return entities
-
-
-def scrap_following(username):
-    def handle_following(following_html):
-        following_username = following_html.find('a').attrib['href'][1:]
-        following = make_following(following_username, username)
-        if not is_user_downloaded(following_username):
-            return [following, scrap_user(following_username)]
-
-    def do_scrap_following(page):
-        following_page = pq(url="http://slideshare.net/%s/following/%d" % (username, page))
-        following_profiles = [x for x in following_page('ul.userList div.userMeta_profile')]
-        relations = [handle_following(followingElement)
-                     for followingElement in following_profiles]
-        relations = filter(None, relations)
-        return list(itertools.chain.from_iterable(relations))
-
-    following_first_page = pq(url="http://slideshare.net/%s/following" % username)
-    pages = calculate_followers_or_following_pages(following_first_page)
-    entities = []
-    for p in range(1, pages + 1):
-        log.info("\t\t\tscraping following, page: %d/%d" % (p, pages))
-        entities.extend(do_scrap_following(p))
-    return entities
-
-
-def scrap_username_following_and_followers(username):
-    save_all_and_commit(scrap_followers(username))
-    log.debug("\t\tsaving followers SUCCESS")
-    save_all_and_commit(scrap_following(username))
-    log.debug("\t\tsaving following SUCCESS")
+    url_suffix = 'following'
+    following = download_follow(
+        url_suffix,
+        lambda following_username: Following(followed_username=following_username, follower_username=username))
+    save_all_and_commit(following)
+    log.debug("\t\tsaving %s SUCCESS" % url_suffix)
 
 
 def scrap_user(username):
@@ -144,7 +125,7 @@ def process_user(username):
         log.info("\tdownloading User(username=%s) ALREADY DONE" % username)
 
     if not is_follow_network_downloaded(username):
-        scrap_username_following_and_followers(username)
+        download_follow_network(username)
         mark_follow_network_as_downloaded(username)
         log.info("\tdownloading follow network of User(username=%s) SUCCESS" % username)
     else:
@@ -227,19 +208,23 @@ def process_slideshow(url):
     log.info("saving Slideshow(url=%s) SUCCESS" % url)
     return related_urls
 
+
 def urls_from_file(filename):
     if os.path.isfile(filename):
         with open(filename, 'r') as f:
             return set(list(f))
     return set()
 
+
 def update_scraped_file(url):
     with open(scraped_file, "a") as f:
-            f.write("%s\n" % url.strip())
+        f.write("%s\n" % url.strip())
+
 
 def update_non_scraped_file(nonscraped):
     with open(nonscraped_file, "w") as f:
-            [f.write("%s\n" % n.strip()) for n in nonscraped]
+        [f.write("%s\n" % n.strip()) for n in nonscraped]
+
 
 def _main():
     scraped, nonscraped = urls_from_file(scraped_file), urls_from_file(nonscraped_file)
@@ -254,7 +239,7 @@ def _main():
         try:
             related_urls = process_slideshow(url)
         except Exception as e:
-            log.exception('Caught exception %s while processing Slideshow(url=%s)' % (e.message, url))     
+            log.exception('Caught exception %s while processing Slideshow(url=%s)' % (e.message, url))
         scraped.add(url)
         nonscraped.update(set(related_urls))
         nonscraped.difference_update(scraped)

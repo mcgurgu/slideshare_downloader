@@ -101,9 +101,9 @@ class SlideshowHasTag(Base):
 class Following(Base):
     __tablename__ = 'following'
     followed_username = Column(String, ForeignKey('user.username'), primary_key=True)
-    following_username = Column(String, ForeignKey('user.username'), primary_key=True)
-    followed_user = relationship('User', backref='following_users', primaryjoin=(User.username == followed_username))
-    following_user = relationship('User', backref='follower', primaryjoin=(User.username == following_username))
+    follower_username = Column(String, ForeignKey('user.username'), primary_key=True)
+    followed_user = relationship('User', backref='followed_username', primaryjoin=(User.username == followed_username))
+    follower_user = relationship('User', backref='follower_username', primaryjoin=(User.username == follower_username))
 
 
 class Related(Base):
