@@ -5,6 +5,8 @@
 *.egg
 *.egg-info
 
-slideshare.db
+downloader/slideshare.db
 downloader/config/config_my.py
 downloader/downloader.log
+downloader/scraped.txt
+downloader/nonscraped.txt
