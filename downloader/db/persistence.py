@@ -21,9 +21,27 @@ def save_all_and_commit(data):
         __session.rollback()
 
 
-def is_user_processed(username):
-    sole_username = __session.query(User.username).filter_by(username=username).scalar()
+def is_user_downloaded(username):
+    sole_username = __session \
+        .query(User.username) \
+        .filter_by(username=username) \
+        .scalar()
     return sole_username is not None
+
+
+def is_follow_network_downloaded(username):
+    follow_network_downloaded = __session \
+        .query(User.follow_network_downloaded) \
+        .filter_by(username=username) \
+        .scalar()
+    return follow_network_downloaded
+
+
+def mark_follow_network_as_downloaded(username):
+    user = __session.query(User).filter_by(username=username).scalar()
+    user.follow_network_downloaded = True
+    # TODO(vucalur): check if UPDATE issued when commit() moved elsewhere
+    __session.commit()
 
 
 def _get_id_create_when_necessary(query_select, entity, **query_filter):

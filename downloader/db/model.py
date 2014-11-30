@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, String, Integer, ForeignKey
+from sqlalchemy import Column, DateTime, String, Integer, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -46,6 +46,7 @@ class Type(Base):
 
 class User(Base):
     __tablename__ = 'user'
+    follow_network_downloaded = Column(Boolean, nullable=False, default=False)
     username = Column(String, primary_key=True)  # leaving off username (API) as PK
     city = Column(String)
     country_id = Column(Integer, ForeignKey('country.id'))
@@ -130,4 +131,3 @@ class Comment(Base):
     ssid = Column(Integer, ForeignKey('slideshow.ssid'), nullable=False)
     user = relationship('User', backref='comments', primaryjoin=(User.username == username))
     ss = relationship('Slideshow', backref='comments', primaryjoin=(Slideshow.ssid == ssid))
-

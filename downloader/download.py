@@ -9,7 +9,7 @@ from urlparse import urlparse
 from pyquery import PyQuery as pq
 
 from db.model import Related, User, Following, SlideshowHasCategory, Slideshow, Comment, Like
-from db.persistence import save_all_and_commit, is_user_processed, get_category_ids
+from db.persistence import save_all_and_commit, is_user_downloaded, get_category_ids, is_follow_network_downloaded, mark_follow_network_as_downloaded
 from downloader.config import config_my as config
 from downloader.db.persistence import get_type_id, get_country_id
 from downloader.util.logger import log
@@ -62,7 +62,7 @@ def scrap_followers(username):
     def handle_followers(followed_html):
         followed_username = followed_html.find('a').attrib['href'][1:]
         following = make_following(username, followed_username)
-        if not is_user_processed(followed_username):
+        if not is_user_downloaded(followed_username):
             return [following, scrap_user(followed_username)]
 
     def do_scrap_followers(page):
@@ -86,7 +86,7 @@ def scrap_following(username):
     def handle_following(following_html):
         following_username = following_html.find('a').attrib['href'][1:]
         following = make_following(following_username, username)
-        if not is_user_processed(following_username):
+        if not is_user_downloaded(following_username):
             return [following, scrap_user(following_username)]
 
     def do_scrap_following(page):
@@ -137,11 +137,18 @@ def scrap_user(username):
 
 
 def process_user(username):
-    if not is_user_processed(username):
-        log.info("\tprocessing User(username=%s)" % username)
+    if not is_user_downloaded(username):
         save_all_and_commit([scrap_user(username)])
+        log.info("\tdownloading User(username=%s) SUCCESS" % username)
+    else:
+        log.info("\tdownloading User(username=%s) ALREADY DONE" % username)
+
+    if not is_follow_network_downloaded(username):
         scrap_username_following_and_followers(username)
-        log.info("\tprocessing User(username=%s) SUCCESS" % username)
+        mark_follow_network_as_downloaded(username)
+        log.info("\tdownloading follow network of User(username=%s) SUCCESS" % username)
+    else:
+        log.info("\tdownloading follow network of User(username=%s) ALREADY DONE" % username)
 
 
 def scrap_slideshow(ss_page):
