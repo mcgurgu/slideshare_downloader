@@ -3,17 +3,15 @@ import sys
 import itertools
 import os
 import socket
-
 from urllib import urlopen
-
 from urlparse import urlparse
 
 from pyquery import PyQuery as pq
 
-from db.model import Related, User, Following, SlideshowHasCategory, Slideshow, Comment, Like
-from db.persistence import save_all_and_commit, is_user_downloaded, get_category_ids, is_follow_network_downloaded, mark_follow_network_as_downloaded
+from downloader.db.model import Related, User, Following, SlideshowHasCategory, Slideshow, Comment, Like, Tag
+from downloader.db.persistence import save_all_and_commit, is_user_downloaded, get_category_ids, is_follow_network_downloaded, mark_follow_network_as_downloaded, get_type_id
 from downloader.config import config_my as config
-from downloader.db.persistence import get_type_id, get_country_id
+from downloader.db.persistence import get_country_id
 from downloader.util.logger import log
 
 
@@ -32,6 +30,7 @@ def scrap_categories_link(d, ss):
     # total mess with categories:
     # http://www.slideshare.net/Bufferapp/workspaces-of-buffer-2 - "More in:" - 2 categories
     # but 3from page src: <meta content="Small Business &amp; Entrepreneurship" class="fb_og_meta" property="slideshare:category" name="slideshow_category"> - single category - WTF ?!
+    # TODO(vucalur): use Unique object recipe
     category_names = [elem.text for elem in d('div.categories-container > a')]
     categories_link = [SlideshowHasCategory(ssid=ss.ssid, category_id=cat_id)
                        for cat_id in get_category_ids(category_names)]
@@ -95,7 +94,14 @@ def download_follow_network(username):
 
 
 def scrap_user(username):
+    def scrap_tags():
+        tags_names = [a_elem.text for a_elem in user_page('#tagsMore span.tagsWrapper span a')]
+        tags = [Tag(name=name) for name in tags_names]
+        log.info("\t\tfound %d Tag(s)" % len(tags))
+        return tags
+
     user_page = pq(url="http://slideshare.net/%s/" % username)
+
     full_name = user_page('h1[itemprop="name"]').text()
     city = user_page('span[itemprop="addressLocality"]').text()
     tmp_country_name = user_page('span[itemprop="addressCountry"]').text()
@@ -105,7 +111,7 @@ def scrap_user(username):
     about = user_page('span[itemprop="description"]').text()
     works_for = user_page('span[itemprop="worksFor"]').text()
 
-    return User(
+    user = User(
         username=username,
         full_name=full_name,
         country_id=country_id,
@@ -115,16 +121,20 @@ def scrap_user(username):
         about=about,
         works_for=works_for
     )
+    user.tags = scrap_tags()
+    return user
 
 
 def process_user(username):
     if not is_user_downloaded(username):
+        log.info("\tdownloading User(username=%s)" % username)
         save_all_and_commit([scrap_user(username)])
         log.info("\tdownloading User(username=%s) SUCCESS" % username)
     else:
         log.info("\tdownloading User(username=%s) ALREADY DONE" % username)
 
     if not is_follow_network_downloaded(username):
+        log.info("\tdownloading follow network of User(username=%s)" % username)
         download_follow_network(username)
         mark_follow_network_as_downloaded(username)
         log.info("\tdownloading follow network of User(username=%s) SUCCESS" % username)

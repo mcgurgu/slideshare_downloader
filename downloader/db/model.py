@@ -1,11 +1,21 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, String, Integer, ForeignKey, Boolean
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.ext.declarative import declarative_base
+
+from downloader.config import config_my as config
+from downloader.db.unique_object import unique_constructor
 
 
 Base = declarative_base()
+
+__engine = create_engine('sqlite:///' + config.db_filename)
+
+Session = scoped_session(sessionmaker(bind=__engine))
+
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S %Z'
 
 
@@ -27,8 +37,6 @@ class Slideshow(Base):
     embeds_count = Column(Integer, nullable=False)
 
     categories = relationship('Category', secondary='slideshow_has_category')
-    # TODO(vucalur): Can we obtain these ? If not - remove table
-    tags = relationship('Tag', secondary='slideshow_has_tag')
 
     def __setattr__(self, key, value):
         if key in ['created_date', 'updated_date']:
@@ -41,7 +49,6 @@ class Type(Base):
     __tablename__ = 'type'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
-    slideshows = relationship('Slideshow', backref="type")
 
 
 class User(Base):
@@ -58,6 +65,7 @@ class User(Base):
     about = Column(String)
     works_for = Column(String)
     slideshows = relationship('Slideshow', backref="user")
+    tags = relationship('Tag', secondary='user_has_tag')
 
     def __setattr__(self, key, value):
         if key == 'joined_date':
@@ -85,17 +93,24 @@ class SlideshowHasCategory(Base):
     category_id = Column(Integer, ForeignKey('category.id'), primary_key=True)
 
 
+# Actually slideshow's tags can be obtained by visiting http://www.slideshare.net/{{username}}/tag/{{tag.name}}, but:
+# 2. doesn't make sense for current crawling method (to obtain all tags for given slideshow, all tag pages for given username have to be visited - cost!)
+# 3. low priority, unnecessary : )
+@unique_constructor(Session,
+    lambda name: name,
+    lambda query, name: query.filter(Tag.name == name)
+)
 class Tag(Base):
     __tablename__ = 'tag'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, unique=True, nullable=False)
-    slideshows = relationship('Slideshow', secondary='slideshow_has_tag')
+    name = Column(String, unique=True, nullable=False, index=True)
 
 
-class SlideshowHasTag(Base):
-    __tablename__ = 'slideshow_has_tag'
-    ssid = Column(Integer, ForeignKey('slideshow.ssid'), primary_key=True)
-    tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
+class UserHasTag(Base):
+    __tablename__ = 'user_has_tag'
+    id = Column(Integer, primary_key=True, autoincrement=True)  # User can have plenty of Tags with the same name. (I know - WTF?!) e.g. http://www.slideshare.net/jiang.wu
+    username = Column(String, ForeignKey('user.username'), nullable=False)
+    tag_id = Column(Integer, ForeignKey('tag.id'), nullable=False)
 
 
 class Following(Base):
@@ -131,3 +146,6 @@ class Comment(Base):
     ssid = Column(Integer, ForeignKey('slideshow.ssid'), nullable=False)
     user = relationship('User', backref='comments', primaryjoin=(User.username == username))
     ss = relationship('Slideshow', backref='comments', primaryjoin=(Slideshow.ssid == ssid))
+
+
+Base.metadata.create_all(__engine)

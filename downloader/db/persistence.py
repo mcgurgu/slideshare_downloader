@@ -1,15 +1,8 @@
-from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
 
-from downloader.config import config_my as config
-from downloader.db.model import Type, Category, Base, User, Country
+from downloader.db.model import Type, Category, User, Country
 from downloader.util.logger import log
-
-
-__engine = create_engine('sqlite:///' + config.db_filename)
-
-__session = None
+from downloader.db.model import Session as __session
 
 
 def save_all_and_commit(data):
@@ -58,14 +51,14 @@ def _get_id_create_when_necessary(query_select, entity, **query_filter):
         log.debug("DB: %s(id=%d, %s) successfully stored" % (entity.__name__, new_obj.id, str(query_filter)))
         return new_obj.id
 
-# TODO(vucalur): refactor: DRY. Cache method/class wrapper ?
+# TODO(vucalur): refactor: DRY. Cache method/class wrapper ? - use Unique object recipe
 __category_id_by_name = {'': None}
 __type_id_by_name = {'': None}
 __country_id_by_name = {'': None}
 
 
 def _load_from_cache(key, cache, query_method):
-    if not key in cache:
+    if key not in cache:
         log.debug("CACHE: key=%s not found in cache=%s" % (key, str(cache)))
         cache[key] = query_method(key)
     else:
@@ -95,9 +88,3 @@ def get_category_ids(cat_names):
         __category_id_by_name,
         lambda name: _get_id_create_when_necessary(Category.id, Category, name=name)
     ) for cat_name in cat_names]
-
-
-DBSession = sessionmaker(bind=__engine)
-__session = DBSession()
-Base.metadata.create_all(__engine)
-
