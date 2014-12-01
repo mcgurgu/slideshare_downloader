@@ -30,7 +30,7 @@ class Slideshow(Base):
     updated_date = Column(DateTime)
     type_id = Column(Integer, ForeignKey('type.id'), nullable=False)
     type = relationship('Type')
-    username = Column(String, ForeignKey('user.username'))
+    username = Column(String, ForeignKey('user.username'), index=True)
 
     downloads_count = Column(Integer, nullable=False)
     views_on_slideshare_count = Column(Integer, nullable=False)
@@ -87,7 +87,7 @@ class User(Base):
 class Country(Base):
     __tablename__ = 'country'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, unique=True, nullable=False, index=True)
 
 
 @unique_constructor(Session,
@@ -97,7 +97,7 @@ class Country(Base):
 class Category(Base):
     __tablename__ = 'category'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, unique=True, nullable=False, index=True)
     slideshows = relationship('Slideshow', secondary="slideshow_has_category")
 
 
