@@ -8,10 +8,9 @@ from urlparse import urlparse
 
 from pyquery import PyQuery as pq
 
-from downloader.db.model import Related, User, Following, SlideshowHasCategory, Slideshow, Comment, Like, Tag
-from downloader.db.persistence import save_all_and_commit, is_user_downloaded, get_category_ids, is_follow_network_downloaded, mark_follow_network_as_downloaded, get_type_id
+from downloader.db.model import Related, User, Following, Slideshow, Comment, Like, Tag, Category, Type, Country
+from downloader.db.persistence import save_all_and_commit, is_user_downloaded, is_follow_network_downloaded, mark_follow_network_as_downloaded
 from downloader.config import config_my as config
-from downloader.db.persistence import get_country_id
 from downloader.util.logger import log
 
 
@@ -24,18 +23,6 @@ socket.setdefaulttimeout(timeout)
 
 def human_readable_str2int(str_):
     return int(str_.replace(',', '').replace(' ', ''))
-
-
-def scrap_categories_link(d, ss):
-    # total mess with categories:
-    # http://www.slideshare.net/Bufferapp/workspaces-of-buffer-2 - "More in:" - 2 categories
-    # but 3from page src: <meta content="Small Business &amp; Entrepreneurship" class="fb_og_meta" property="slideshare:category" name="slideshow_category"> - single category - WTF ?!
-    # TODO(vucalur): use Unique object recipe
-    category_names = [elem.text for elem in d('div.categories-container > a')]
-    categories_link = [SlideshowHasCategory(ssid=ss.ssid, category_id=cat_id)
-                       for cat_id in get_category_ids(category_names)]
-    log.info("\tcategory IDs: %s" % str([cat_link.category_id for cat_link in categories_link]))
-    return categories_link
 
 
 def scrap_related(d, relating_ssid):
@@ -105,7 +92,7 @@ def scrap_user(username):
     full_name = user_page('h1[itemprop="name"]').text()
     city = user_page('span[itemprop="addressLocality"]').text()
     tmp_country_name = user_page('span[itemprop="addressCountry"]').text()
-    country_id = get_country_id(tmp_country_name) if tmp_country_name else None
+    country = Country(name=tmp_country_name) if tmp_country_name else None
     joined_date = user_page('meta[property="slideshare:joined_on"]')[0].attrib['content']
     url = user_page('a[itemprop="url"]').text()
     about = user_page('span[itemprop="description"]').text()
@@ -114,7 +101,7 @@ def scrap_user(username):
     user = User(
         username=username,
         full_name=full_name,
-        country_id=country_id,
+        country=country,
         city=city,
         joined_date=joined_date,
         url=url,
@@ -143,18 +130,26 @@ def process_user(username):
 
 
 def scrap_slideshow(ss_page):
+    def scrap_categories():
+        # total mess with categories:
+        # http://www.slideshare.net/Bufferapp/workspaces-of-buffer-2 - "More in:" - 2 categories
+        # but 3from page src: <meta content="Small Business &amp; Entrepreneurship" class="fb_og_meta" property="slideshare:category" name="slideshow_category"> - single category - WTF ?!
+        category_names = [elem.text for elem in ss_page('div.categories-container > a')]
+        categories = [Category(name=name) for name in category_names]
+        return categories
+
     path_with_ssid = ss_page('meta.twitter_player')[0].attrib['value']
     ss_stats = ss_page('dl.statistics > dd')
     type_name = ss_page('meta[name=og_type]')[0].attrib['content'].split(':')[1]
 
-    return Slideshow(
+    ss = Slideshow(
         ssid=int(urlparse(path_with_ssid).path.split('/')[-1]),
         title=ss_page('title')[0].text,
         description=ss_page('meta[name=description]')[0].attrib['content'],
         url=ss_page.base_url,
         created_date=ss_page('meta[name=slideshow_created_at]')[0].attrib['content'],
         updated_date=ss_page('meta[name=slideshow_updated_at]')[0].attrib['content'],
-        type_id=get_type_id(type_name),
+        type=Type(name=type_name),
         username=ss_page('meta[name=slideshow_author]')[0].attrib['content'].split('/')[-1],
         views_on_slideshare_count=human_readable_str2int(ss_stats[1].text),
         views_from_embeds_count=human_readable_str2int(ss_stats[2].text),
@@ -162,6 +157,8 @@ def scrap_slideshow(ss_page):
         downloads_count=int(ss_page('meta[name=slideshow_download_count]')[0].attrib['content']),
         embeds_count=int(ss_page('meta[name=slideshow_embed_count]')[0].attrib['content'])
     )
+    ss.categories = scrap_categories()
+    return ss
 
 
 def get_comments(ssid):
@@ -209,13 +206,12 @@ def process_slideshow(url):
     ss_page = pq(url=url)
     ss = scrap_slideshow(ss_page)
     process_user(ss.username)
-    categories_link = scrap_categories_link(ss_page, ss)
     related_objs, related_urls = scrap_related(ss_page, ss.ssid)
     log.info("\tRelated count: %s" % len(related_urls))
     comments = get_comments(ss.ssid)
     likes = get_likes(ss.ssid)
-    save_all_and_commit(related_objs + [ss] + categories_link + comments + likes)
-    log.info("saving Slideshow(url=%s) SUCCESS" % url)
+    save_all_and_commit(related_objs + [ss] + comments + likes)
+    log.info("processing Slideshow(url=%s) SUCCESS" % url)
     return related_urls
 
 

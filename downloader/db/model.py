@@ -29,6 +29,7 @@ class Slideshow(Base):
     created_date = Column(DateTime, nullable=False)
     updated_date = Column(DateTime)
     type_id = Column(Integer, ForeignKey('type.id'), nullable=False)
+    type = relationship('Type')
     username = Column(String, ForeignKey('user.username'))
 
     downloads_count = Column(Integer, nullable=False)
@@ -45,6 +46,10 @@ class Slideshow(Base):
             super(Slideshow, self).__setattr__(key, value)
 
 
+@unique_constructor(Session,
+    lambda name: name,
+    lambda query, name: query.filter(Type.name == name)
+)
 class Type(Base):
     __tablename__ = 'type'
     id = Column(Integer, primary_key=True)
@@ -57,6 +62,7 @@ class User(Base):
     username = Column(String, primary_key=True)  # leaving off username (API) as PK
     city = Column(String)
     country_id = Column(Integer, ForeignKey('country.id'))
+    country = relationship('Country')
     organization = Column(String)
     full_name = Column(String)
     description = Column(String)
@@ -74,12 +80,20 @@ class User(Base):
             super(User, self).__setattr__(key, value)
 
 
+@unique_constructor(Session,
+    lambda name: name,
+    lambda query, name: query.filter(Country.name == name)
+)
 class Country(Base):
     __tablename__ = 'country'
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, unique=True, nullable=False)
 
 
+@unique_constructor(Session,
+    lambda name: name,
+    lambda query, name: query.filter(Category.name == name)
+)
 class Category(Base):
     __tablename__ = 'category'
     id = Column(Integer, primary_key=True, autoincrement=True)
